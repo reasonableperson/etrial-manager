@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<table>
+  <tr>
+    <th>ID</th><th>Title</th><th>Size</th>
+    <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
+  </tr>
+  {% for hash, metadata in files.items() %}
+  <tr>
+    <td>{{ hash|truncate(4,true,'') }}&hellip;</td><td>{{ metadata.title }}</td>
+    <td><button class="publish" data-audience="judge" data-hash="{{hash}}">Publish</button></td>
+    <td><button class="publish" data-audience="jury" data-hash="{{hash}}">Publish</button></td>
+    <td><button class="publish" data-audience="witness" data-hash="{{hash}}">Publish</button></td>
+    <td><button class="delete" data-hash="{{hash}}">Delete</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<pre>{{ cert }}</pre>
+
+{% endblock %}

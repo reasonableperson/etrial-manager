@@ -1,0 +1,18 @@
+* { margin: 0; padding: 0 }
+img { height: 20em }
+
+nav ul li { display: inline-block }
+
+#dropzone { height: 10em; width: 20em; background: #aaf }
+#dropzone-highlight { 
+  position: absolute; z-index: -1; opacity: 0;
+  background: white; width: 100%; height: 100%
+}
+#dropzone-highlight.active { opacity: 0.5; z-index: 0 }
+
+#notifications ul { list-style-type: none; padding: 0 }
+#notifications .progress {
+  width: 0;
+  background: #087316;
+  height: 1em
+}
