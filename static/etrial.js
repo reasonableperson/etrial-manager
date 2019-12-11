@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () { 
 
-  // #dropzone-highlight is an absolutely-positioned div with partial opacity
+  // #highlight is an absolutely-positioned div with partial opacity
   // which covers the entire viewport and is not displayed by default. These
   // functions can be used to 'highlight' the viewport, to indicate that it is
-  // ready to receive a dropped file, by making #dropzone-highlight visible.
-  const overlay = document.getElementById('dropzone-highlight')
+  // ready to receive a dropped file, by making #highlight visible.
+  const overlay = document.getElementById('highlight')
   const highlight = function (event)  {
     event.preventDefault()
     overlay.classList.add('active')
@@ -38,11 +38,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  const createProgressHandler = (progressElem) => (e) => {
-  }
-
   // Adds a new notification toast for a new file upload, and updates the
-  // progress indicator as the file uploads?
+  // progress indicator as the file uploads
   const addUpload = function (file) {
     const ul = document.getElementById('notifications').children[0]
     const size = Math.round(file.size / 1024).toLocaleString() + ' KiB'
@@ -59,14 +56,28 @@ document.addEventListener('DOMContentLoaded', function () {
     req.upload.addEventListener('progress', (e) => {
       progressIndicator.style.width = e.loaded / e.total * 100 + '%'
     })
-
-    //reader.addEventListener('load', (e) => { req.send(e.target.result) })
     req.open('POST', '/upload?filename=' + encodeURIComponent(file.name), true)
     req.send(file)
-
-    //reader.readAsBinaryString(file)
-
   }
+
+  const handleButtons = function (e) {
+    const d = e.target.dataset
+    if (e.target.tagName == "BUTTON") {
+
+      if (d.arg == "custom") {
+        e.target.parentNode.className = 'identifier edit'
+
+      } else if (e.target.className == "assign") {
+        var req = new XMLHttpRequest()
+        req.open('POST', `/identify/${d.hash}/${d.arg}`, true)
+        req.send()
+
+      } else {
+        console.log(d.hash, e.target.className, d.arg)
+      }
+    }
+  }
+
 
   document.addEventListener('dragenter', highlight, false)
   document.addEventListener('dragleave', unhighlight, false)
@@ -74,5 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('drop', accept, false)
 
   document.getElementById('notifications').addEventListener('click', cancelUpload, false)
+  document.getElementById('docs').addEventListener('click', handleButtons, false)
 
 })

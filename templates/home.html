@@ -2,17 +2,27 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 
-<table>
+<table id="docs">
   <tr>
-    <th>ID</th><th>Title</th><th>Size</th>
+    <th>Title</th><th class="identifier">Identifier</th>
     <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
   </tr>
   {% for hash, metadata in files.items() %}
   <tr>
-    <td>{{ hash|truncate(4,true,'') }}&hellip;</td><td>{{ metadata.title }}</td>
-    <td><button class="publish" data-audience="judge" data-hash="{{hash}}">Publish</button></td>
-    <td><button class="publish" data-audience="jury" data-hash="{{hash}}">Publish</button></td>
-    <td><button class="publish" data-audience="witness" data-hash="{{hash}}">Publish</button></td>
+    <td><a href="/docs/{{ hash }}">{{ metadata.title }}</a></td>
+    <td class="identifier">
+      {% if metadata.identifier %}
+      {{ metadata.identifier }}
+      {% else %}
+      <input data-hash="{{hash}}">
+      <button class="assign" data-arg="MFI" data-hash="{{hash}}">MFI</button>
+      <button class="assign" data-arg="Exhibit" data-hash="{{hash}}">Exhibit</button>
+      <button class="assign" data-arg="custom" data-hash="{{hash}}">&hellip;</button>
+      {% endif %}
+    </td>
+    <td><button class="publish" data-arg="judge" data-hash="{{hash}}">Publish</button></td>
+    <td><button class="publish" data-arg="jury" data-hash="{{hash}}">Publish</button></td>
+    <td><button class="publish" data-arg="witness" data-hash="{{hash}}">Publish</button></td>
     <td><button class="delete" data-hash="{{hash}}">Delete</button></td>
   </tr>
   {% endfor %}

@@ -21,25 +21,48 @@ def save_metadata(md):
     with open('metadata.toml', 'w') as fd:
         return toml.dump(md, fd)
 
+def get_user_name():
+    cert = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Certificate'))
+    for c in os.listdir('certs'):
+        with open(os.path.join('certs', c)) as fd:
+            if cert == fd.read():
+                return c.replace('.crt', '')
+
 @app.route('/')
 def home():
     metadata = load_metadata()
+    user = get_user_name()
     cert = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Certificate'))
-    return render_template('home.html', files=metadata, cert=cert)
+    return render_template('home.html', files=metadata, user=user)
 
 @app.route('/admin')
 def admin():
     metadata = load_metadata()
+    user = get_user_name()
     return render_template('admin.html')
 
 @app.route('/log')
 def log():
     metadata = load_metadata()
+    user = get_user_name()
     return render_template('log.html')
+
+# Assign the next available MFI or exhibit number.
+@app.route('/identify/<_hash>/<prefix>', methods=['POST'])
+def identify(_hash, prefix):
+    metadata = load_metadata()
+    user = get_user_name()
+    print(_hash, prefix)
+    existing_identifiers = [d.replace(prefix, '') for d in metadata.values() if d.get('id') is not None and d.get('id')[:len(prefix)] == prefix]
+    print('existing ids:', existing_identifiers)
+    metadata[_hash].update({ 'identifier': f'{prefix} 1' })
+    save_metadata(metadata)
+    return 'ok'
 
 @app.route('/upload', methods=['POST'])
 def upload():
     metadata = load_metadata()
+    user = get_user_name()
     print(f'Received {len(request.data)} bytes.')
     title = request.args.get('filename')
     h = hashlib.blake2b(digest_size=20)

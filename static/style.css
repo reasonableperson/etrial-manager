@@ -1,14 +1,29 @@
 * { margin: 0; padding: 0 }
-img { height: 20em }
+body { padding: 1em }
 
-nav ul li { display: inline-block }
+nav { display: flex; background: #3a0870; color: white; padding: 1em; align-items: center }
+nav a, nav a:visited { font-weight: bold; color: white; text-decoration: none }
+nav a, nav a:hover { text-decoration: underline }
+nav a.current { text-decoration: none }
+nav ul { flex: 1; text-align: right; margin: 0 1em }
+nav ul li { display: inline-block; margin: 0 1em }
 
-#dropzone { height: 10em; width: 20em; background: #aaf }
-#dropzone-highlight { 
+table { width: 100%; padding: 1em }
+
+button { margin: 0.2em }
+
+.identifier input { width: 6em; display: none }
+.identifier.edit input { display: inherit }
+.identifier.edit button { display: none }
+
+th.identifier, td.identifier { width: 15em; text-align: center }
+
+
+#highlight { 
   position: absolute; z-index: -1; opacity: 0;
   background: white; width: 100%; height: 100%
 }
-#dropzone-highlight.active { opacity: 0.5; z-index: 0 }
+#highlight.active { opacity: 0.5; z-index: 0 }
 
 #notifications ul { list-style-type: none; padding: 0 }
 #notifications .progress {

@@ -98,35 +98,24 @@ Copy the SSL wildcard certificate from nuclet:
     cp /etc/letsencrypt/live/sjy.id.au/cert.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.crt
     chown -R vu-etrial-0:vg-etrial-0 /var/lib/machines/etrial/etc/nginx
 
-# HTTPS client certificate
+# HTTPS authentication
 
-Create a private key and certificate for a custom CA.
+In the container, create a CA and move the keyfile and certificate into the
+`nginx` configuration directory:
 
-    cd /etc/nginx
-    openssl ecparam -genkey -name secp256r1 | openssl ec -out etrial.ca.key
-    openssl req -new -x509 -days 3650 -key etrial.ca.key -out etrial.ca.crt \
-      -subj "/C=AU/ST=NSW/L=Sydney/O=CDPP/CN=etrial"
+    cd ~etrial
+    scripts/create-ca.sh
+    mv etrial.ca.* /etc/nginx
 
-Create a private key and certificate signing request for a new user.
+Then create a new user and move the certificate into the `certs` directory:
 
-    openssl ecparam -genkey -name secp256r1 | openssl ec -out etrial.scott.key
-    openssl req -new -key etrial.scott.key -out etrial.scott.csr \
-      -subj "/C=AU/ST=NSW/L=Sydney/O=CDPP/CN=Scott Young"
+    scripts/add-https-user.sh "Scott Young"
+    mv *.crt certs
 
-Sign the user's certificate, creating a new serial:
+On nuclet, take ownership of the certificate so you can copy it directly from
+the container and import it into Firefox. Then, delete the PFX file.
 
-    openssl x509 -req -days 365 \
-      -in etrial.scott.csr -out etrial.scott.crt \
-      -CA etrial.ca.crt -CAkey etrial.ca.key -CAcreateserial
-    openssl pkcs12 -export -inkey etrial.scott.key -in etrial.scott.crt -out etrial.scott.pfx
-
-Copy the certificate to `/home/etrial/keys`, which is really `~scott/git/etrial/keys`:
-
-    cp etrial.*.pfx /home/etrial/keys
-
-On nuclet, so you can actually read the certificate:
-
-    chown scott:scott ~scott/git/etrial/keys/*.pfxz
+    sudo chown scott:scott ~scott/git/etrial/"Scott Young.pfx"
 
 # nginx config
 
@@ -149,6 +138,7 @@ On nuclet, so you can actually read the certificate:
           }
 
           location /static { root /home/etrial; }
+          location /docs { root /secure; }
       }
     }'
 
