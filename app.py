@@ -39,7 +39,8 @@ def home():
 def admin():
     metadata = load_metadata()
     user = get_user_name()
-    return render_template('admin.html')
+    certs = os.listdir('certs')
+    return render_template('admin.html', certs=certs)
 
 @app.route('/log')
 def log():
@@ -56,6 +57,15 @@ def identify(_hash, prefix):
     existing_identifiers = [d.replace(prefix, '') for d in metadata.values() if d.get('id') is not None and d.get('id')[:len(prefix)] == prefix]
     print('existing ids:', existing_identifiers)
     metadata[_hash].update({ 'identifier': f'{prefix} 1' })
+    save_metadata(metadata)
+    return 'ok'
+
+# Assign the next available MFI or exhibit number.
+@app.route('/delete/<_hash>', methods=['POST'])
+def delete(_hash):
+    metadata = load_metadata()
+    user = get_user_name()
+    del metadata[_hash]
     save_metadata(metadata)
     return 'ok'
 

@@ -1,14 +1,21 @@
 * { margin: 0; padding: 0 }
 body { padding: 1em }
 
-nav { display: flex; background: #3a0870; color: white; padding: 1em; align-items: center }
+nav {
+  display: flex; background: #3a0870; color: white;
+  padding: 1em; margin-bottom: 1em; align-items: center
+}
 nav a, nav a:visited { font-weight: bold; color: white; text-decoration: none }
 nav a, nav a:hover { text-decoration: underline }
 nav a.current { text-decoration: none }
 nav ul { flex: 1; text-align: right; margin: 0 1em }
 nav ul li { display: inline-block; margin: 0 1em }
 
-table { width: 100%; padding: 1em }
+p, h2, table, form { margin-bottom: 1em }
+table { border-collapse: collapse }
+td, th { border: 1px #ccc solid; height: 2em; padding: 0 0.5em }
+
+table#docs { width: 100%; padding: 1em }
 
 button { margin: 0.2em }
 

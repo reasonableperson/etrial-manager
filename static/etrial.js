@@ -70,6 +70,13 @@ document.addEventListener('DOMContentLoaded', function () {
       } else if (e.target.className == "assign") {
         var req = new XMLHttpRequest()
         req.open('POST', `/identify/${d.hash}/${d.arg}`, true)
+        req.addEventListener('load', () => { window.location.reload() })
+        req.send()
+
+      } else if (e.target.className == "delete") {
+        var req = new XMLHttpRequest()
+        req.open('POST', `/delete/${d.hash}`, true)
+        req.addEventListener('load', () => { window.location.reload() })
         req.send()
 
       } else {

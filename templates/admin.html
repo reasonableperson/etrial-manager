@@ -2,6 +2,63 @@
 {% block title %}Admin{% endblock %}
 {% block content %}
 
-Admin
+<h2>Secure filesystem</h2>
+
+<p>The system was decrypted at (time) by (user).</p>
+
+<h2>Administrative users</h2>
+
+<p>These users are able to access the web interface you are using right now.
+They can download, add or remove any documents.</p>
+
+<table id="certs">
+  <tr>
+    <th>User</th>
+    <th>Created on</th>
+    <th>Delete</th>
+  </tr>
+  {% for cert in certs %}
+  <tr>
+    <td>{{ cert }}</td>
+    <td>(date and time)</td>
+    <td><button class="delete">Delete</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Create new admin user</h3>
+<form action="/new-admin-user">
+  <input name="name" placeholder="Enter user's full name ...">
+  <button type="submit">Create new administrative user</button>
+</form>
+
+<h2>Limited users</h2>
+
+<p>These users are able to access their group's publication folder over SSH.
+They cannot access any other group's publication folder or modify any files.
+Generally, an administrative user would assist them to configure an iOS device
+running PDF Expert or similar software to connect to the publication folder
+using the SSH key.</p>
+
+<table id="limited-users">
+  <tr>
+    <th>User</th>
+    <th>Group</th>
+    <th>Delete</th>
+  </tr>
+  {% for cert in certs %}
+  <tr>
+    <td>{{ cert }}</td>
+    <td>Jury</td>
+    <td><button class="delete">Delete</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Create new limited user</h3>
+<form action="/new-admin-user">
+  <input name="name" placeholder="Enter user's full name ...">
+  <button type="submit">Create new administrative user</button>
+</form>
 
 {% endblock %}
