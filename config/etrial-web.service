@@ -1,17 +1,16 @@
 [Unit]
-    Description=Flask etrial app
-    After=network.target
-    [Service]
-    Type=simple
-    User=etrial
-    WorkingDirectory=/home/etrial
-    ExecStart=/usr/bin/gunicorn --access-logfile - --reload \
-	--reload-extra-file templates/base.html  \
-	--reload-extra-file templates/home.html  \
-	--reload-extra-file templates/admin.html  \
-	--reload-extra-file templates/log.html  \
-	app:app
-    KillMode=mixed
-    TimeoutStopSec=5
-    [Install]
-    WantedBy=multi-user.target
+Description=Flask etrial app
+After=network.target
+
+[Service]
+User=etrial
+WorkingDirectory=/home/etrial
+ExecStart=/usr/bin/gunicorn --access-logfile - --reload \
+  --reload-extra-file templates/base.html  \
+  --reload-extra-file templates/home.html  \
+  --reload-extra-file templates/admin.html  \
+  --reload-extra-file templates/log.html  \
+  app:app
+
+[Install]
+WantedBy=multi-user.target
