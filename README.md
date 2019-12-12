@@ -13,7 +13,7 @@ useful for the Raspberry Pi idea as well.
 
     mkdir /var/lib/machines/etrial
     pacstrap -c /var/lib/machines/etrial base \
-      entr gunicorn nginx python-toml python-flask \
+      entr gunicorn nginx python-toml python-pytz python-flask \
       openssh sshguard \
       vim
 

@@ -1,6 +1,6 @@
 <!doctype html>
 <head>
-  <title>etrial | {% block title %}{% endblock %}</title>
+  <title>{% if casename %}{{casename}} {% endif %}⚖️ {% block title %}{% endblock %}</title>
   <link rel="stylesheet" type="text/css" href="/static/style.css">
 </head>
 <body>
@@ -40,6 +40,10 @@
 
   <footer>
     <table>
+      <tr>
+        <th>Current time</th>
+        <td>{{ g.now }}</td>
+      </tr>
       <tr>
         <th>User</th>
         <td>{{ user }}</td>

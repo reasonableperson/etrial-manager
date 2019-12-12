@@ -10,6 +10,12 @@ nav#submenu a { font-weight: normal; border-bottom: 1px #e1d1f0 solid }
 nav#submenu a:first-child { margin-left: auto; border-left: 1px #e1d1f0 solid }
 
 section { margin: 2em 3em }
+section #drag-drop-overlay { width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0; padding-top: 20%;
+  text-align: center; font-size: 3em; color: white;
+  background: #3a0870; z-index: -1; opacity: 0;
+}
+section #drag-drop-overlay.active { z-index: 1; opacity: 0.8 }
 
 footer {
   padding: 1em; border-top: 1px #e1d1f0 solid;
@@ -31,7 +37,10 @@ section > nav .filter input { height: 1.2em }
 section > nav .filter .emoji { font-size: 1.5em }
 
 section table { width: 100%; padding: 1em; border-collapse: collapse }
-section table td, section table th { border: 1px #ccc solid; padding: 0.5em; }
+section table thead { background: #e1d1f0 }
+section table td, section table th { border: 1px #ccc solid; padding: 0.5em; height: 3em }
+
+section table th.rotate { transform: rotate(-60deg); padding: 0 }
 
 section table th.sort { white-space: nowrap }
 section table th.sort.active::after { content: " ▴" }
@@ -39,8 +48,6 @@ section table th.sort.active.reverse::after { content: " ▾" }
 
 section table td.with-button { border-right: none }
 section table td.with-button + td { border-left: none }
-
-section table .delete { text-align: center }
 
 section table .identifier { white-space: nowrap }
 section table .added { white-space: nowrap; text-align: right }
@@ -60,11 +67,16 @@ section table .tooltip .tip {
   position: absolute; top: 0; left: 100%
 }
 
-section table .published, section table .unpublished { width: 4.5em; text-align: center }
-section table .published { background: #3a0870 }
-section table .published:hover::after { content: 'recall?'; font-size: 0.8em; color: white; cursor: pointer }
-section table .unpublished:hover { background: #e1d1f0 }
-section table .unpublished:hover::after { content: 'publish?'; font-size: 0.8em; cursor: pointer }
+section table .added { text-align: center }
+
+section table .matrix { width: 5em; padding: 0; font-size: 0.8em; text-align: center; cursor: pointer }
+section table .matrix:hover { background: #e1d1f0 }
+section table .matrix:hover::after { content: 'publish?' }
+section table .matrix.published { background: #3a0870; color: white }
+section table .matrix.published:hover { background: #de7a00 }
+section table .matrix.published:hover::after { content: 'recall?' }
+section table .matrix.delete:hover { background: #900000; color: white }
+section table .matrix.delete:hover::after { content: '✖'; font-size: 2em }
 
 footer table { margin-left: auto }
 footer table td { text-align: left; padding-left: 0.2em }
@@ -80,9 +92,4 @@ code { font-family: monospace }
 }
 #highlight.active { opacity: 0.5; z-index: 0 }
 
-#notifications ul { list-style-type: none; padding: 0 }
-#notifications .progress {
-  width: 0;
-  background: #087316;
-  height: 1em
-}
+.progress { width: 0; background: #087316; height: 1em }

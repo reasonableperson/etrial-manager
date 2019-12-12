@@ -2,7 +2,7 @@
 {% block title %}Documents{% endblock %}
 {% block content %}
 
-<div id="drag-drop-overlay"></div>
+<div id="drag-drop-overlay">Drop documents here to upload ...</div>
 
 <nav>
 <div class="query">Showing <select>
@@ -16,52 +16,61 @@
 </nav>
 
 <table id="docs">
-  <tr>
-    <th colspan="2" class="sort{% if sort.field == 'identifier' %}
-      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
-      <a href="?sort=identifier{% if not sort.reverse %}&reverse{% endif %}"> 
-        Identifier</a></th>
-    <th colspan="2" class="sort{% if sort.field == 'title' %}
-      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
-      <a href="?sort=title{% if not sort.reverse %}&reverse{% endif %}"> 
-        Title</a></th>
-    <th class="sort{% if sort.field == 'added' %}
-      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
-      <a href="?sort=added{% if not sort.reverse %}&reverse{% endif %}"> 
-        Added</a></th>
-    <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
-  </tr>
-  {% for hash, metadata in metadata %}
-  <tr>
-    <td class="identifier tooltip with-button">
-      <div class="tip">{{ hash }}</div>
-      {% if metadata.identifier %}
-      <strong>{{ metadata.identifier }}</strong>
-    </td><td>
-      <button class="edit" data-hash="{{hash}}"
-        title="Edit identifier">✏️</button>
-      {% else %}
-      <code>{{hash|truncate(9)|safe}}</code>
-    </td><td>
-      <button class="assign" data-arg="MFI" data-hash="{{hash}}"
-        title="Magically assign the next identifier">✨</button>
-      {% endif %}
-    </td>
-    <td class="with-button">
-      <a href="/docs/{{ hash }}">{{ metadata.title }}</a>
-    </td><td>
-      <button class="edit">✏️</button>
-    </td>
-    <td class="added">
-      <span class="date">{{ metadata.added.strftime('%-d %b') }}</span><br>
-      <span class="tim">{{ metadata.added.strftime('%-I:%M %p')|lower }}</span>
-    </td>
-    <td class="judge published" data-hash="{{hash}}"></td>
-    <td class="jury unpublished" data-hash="{{hash}}"></td>
-    <td class="witness unpublished" data-hash="{{hash}}"></td>
-    <td class="delete"><button data-hash="{{hash}}">❌</button></td>
-  </tr>
+  <thead>
+    <tr>
+      <th colspan="2" class="sort{% if sort.field == 'identifier' %}
+        active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+        <a href="?sort=identifier{% if not sort.reverse %}&reverse{% endif %}"> 
+          Identifier</a></th>
+      <th colspan="2" class="sort{% if sort.field == 'title' %}
+        active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+        <a href="?sort=title{% if not sort.reverse %}&reverse{% endif %}"> 
+          Title</a></th>
+      <th class="sort{% if sort.field == 'added' %}
+        active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+        <a href="?sort=added{% if not sort.reverse %}&reverse{% endif %}"> 
+          Added</a></th>
+      <th class="rotate">Judge</th>
+      <th class="rotate">Jury</th>
+      <th class="rotate">Witness</th>
+      <th class="rotate">Delete</th>
+    </tr>
+  </thead><tbody>
+  {% for hash, meta in metadata %}
+    <tr>
+      <td class="identifier tooltip with-button">
+        <div class="tip">{{ hash }}</div>
+        {% if meta.identifier %}
+        <strong>{{ meta.identifier }}</strong>
+      </td><td>
+        <button class="edit" data-hash="{{hash}}"
+          title="Edit identifier">✏️</button>
+        {% else %}
+        <code>{{hash|truncate(9)|safe}}</code>
+      </td><td>
+        <button class="assign" data-arg="MFI" data-hash="{{hash}}"
+          title="Magically assign the next identifier">✨</button>
+        {% endif %}
+      </td>
+      <td class="with-button">
+        <a href="/docs/{{ hash }}">{{ meta.title }}</a>
+      </td><td>
+        <button class="edit">✏️</button>
+      </td>
+      <td class="added">
+        <span class="date">{{ meta.added.strftime('%a %-d %b') }}</span><br>
+        <span class="time">{{ meta.added.strftime('%-I:%M %p')|lower }}</span>
+      </td>
+      <td class="matrix {% if 'judge' in meta.published %}published{% endif %}"
+        data-hash="{{hash}}" data-user-group="judge"></td>
+      <td class="matrix jury {% if 'jury' in meta.published %}published{% endif %}"
+        data-hash="{{hash}}" data-user-group="jury"></td>
+      <td class="matrix witness {% if 'witness' in meta.published %}published{% endif %}"
+        data-hash="{{hash}}" data-user-group="witness"></td>
+      <td class="matrix delete" data-hash="{{hash}}"></td>
+    </tr>
   {% endfor %}
+  </tbody>
 </table>
 
 <pre>{{ cert }}</pre>

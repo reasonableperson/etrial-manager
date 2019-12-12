@@ -20,39 +20,31 @@ document.addEventListener('DOMContentLoaded', function () {
     unhighlight()
     const files = event.dataTransfer.files
     for (var i = 0; i < files.length; i++) {
-      addUpload(files[i])
+      upload(files[i])
       console.dir(files[i].name, files[i].size / 1024, files[i].type)
-    }
-  }
-
-  // Kill an upload by pressing the ×.
-  const cancelUpload = function (event) {
-    // This handler can be attached to the whole notifications section and it
-    // will only run if the clicked item was actually the cancel button.
-    if (event.target.className == 'cancel') {
-      console.log(event.target.parentElement)
-      event.target.parentElement.style.opacity = 0
-      event.target.parentElement.addEventListener('transitionend', function (event) {
-        event.target.outerHTML = ''
-      })
     }
   }
 
   // Adds a new notification toast for a new file upload, and updates the
   // progress indicator as the file uploads
-  const addUpload = function (file) {
-    const ul = document.getElementById('notifications').children[0]
+  const upload = function (file) {
+    //Create a new row in the table
+    var firstRow = document.querySelector('tbody tr')
+    var newRow = document.createElement('TR')
+    var newCell = document.createElement('TD')
+    newCell.colSpan = 9
+    newCell.innerText = file.name
+    firstRow.parentNode.insertBefore(newRow, firstRow)
+    newRow.appendChild(newCell)
+
+    // Create progress indicator
     const size = Math.round(file.size / 1024).toLocaleString() + ' KiB'
-    var li = document.createElement('LI')
-    var progressIndicator = document.createElement('DIV')
+    var progressIndicator = document.createElement('div')
     progressIndicator.className = "progress"
-    li.innerHTML = file.name + ' (' + file.type + ', ' + size + ')' + 
-      '<span class="cancel">×</span>'
-    li.appendChild(progressIndicator)
-    ul.appendChild(li)
+    newCell.appendChild(progressIndicator)
 
     var req = new XMLHttpRequest()
-    req.upload.addEventListener('load', () => { li.remove(); window.location.reload() })
+    req.upload.addEventListener('load', () => { window.location = '?reverse' })
     req.upload.addEventListener('progress', (e) => {
       progressIndicator.style.width = e.loaded / e.total * 100 + '%'
     })
@@ -60,8 +52,45 @@ document.addEventListener('DOMContentLoaded', function () {
     req.send(file)
   }
 
+  // Publish a document to the selected user group.
+
+  const publish = async (hash, user_group) => {
+    const response = await fetch(`/publish/${hash}/${user_group}`, { 'method': 'POST' })
+    console.log(response)
+    window.location.reload()
+  }
+
+  // Recall a document from the selected user group.
+
+  const recall = async (hash, user_group) => {
+    const response = await fetch(`/recall/${hash}/${user_group}`, { 'method': 'POST' })
+    console.log(response)
+    window.location.reload()
+  }
+
+  const _delete = async (hash) => {
+    const response = await fetch(`/delete/${hash}`, { 'method': 'POST' })
+    console.log(response)
+    window.location.reload()
+  }
+
+
   const handleButtons = function (e) {
     const d = e.target.dataset
+
+    if (e.target.tagName == "TD") {
+      if (e.target.classList.contains("published")) {
+        console.log('recall', d.hash, d.userGroup)
+        console.log(recall(d.hash, d.userGroup))
+      } else if (e.target.classList.contains("delete")) {
+        console.log('delete', d.hash)
+        console.log(_delete(d.hash))
+      } else {
+        console.log('publish', d.hash, d.userGroup)
+        console.log(publish(d.hash, d.userGroup))
+      }
+    }
+
     if (e.target.tagName == "BUTTON") {
 
       if (d.arg == "custom") {
@@ -85,13 +114,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-
   document.addEventListener('dragenter', highlight, false)
   document.addEventListener('dragleave', unhighlight, false)
   document.addEventListener('dragover', highlight, false)
   document.addEventListener('drop', accept, false)
 
-  //document.getElementById('notifications').addEventListener('click', cancelUpload, false)
-  document.getElementById('docs').addEventListener('click', handleButtons, false)
+  const maybeAttach = (_id, _event, callback) => {
+    if (document.getElementById(_id) !== null) {
+      document.getElementById(_id).addEventListener(_event, callback, false)
+    }
+  }
+
+  maybeAttach('docs', 'click', handleButtons)
+
+  if (document.getElementById('submenu')) {
+    document.getElementById('submenu').addEventListener('click', (e) => {
+      console.log(e)
+    })
+  }
 
 })
