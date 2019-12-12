@@ -2,6 +2,14 @@
 {% block title %}Log{% endblock %}
 {% block content %}
 
-Log
+<nav>
+<div class="query">Showing <select>
+  <option>all events</option>
+</select> in <select>
+  <option>reverse chronological</option>
+  <option>chronological</option>
+</select> order</div>
+<div class="filter"><div class="emoji">🔍</div><input placeholder="Quick filter &hellip;"></div>
+</nav>
 
 {% endblock %}

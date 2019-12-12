@@ -5,12 +5,6 @@
 </head>
 <body>
 
-  <div id="highlight"></div>
-
-  <div id="notifications">
-    <ul></ul>
-  </div>
-
   {% with messages = get_flashed_messages() %}
   {% if messages %}
     <ul class=flashes>
@@ -21,29 +15,46 @@
   {% endif %}
   {% endwith %}
 
-  <nav>
-    <h1>CDPP e-trial administration system</h1>
-    <ul>
-      {% if request.path == "/" %}
-      <li><a href="/" class="current">Home</a></li>
-      {% else %}
-      <li><a href="/">Home</a></li>
-      {% endif %}
-      {% if request.path == "/admin" %}
-      <li><a href="/admin" class="current">Admin</a></li>
-      {% else %}
-      <li><a href="/admin">Admin</a></li>
-      {% endif %}
-      {% if request.path == "/log" %}
-      <li><a href="/log" class="current">Log</a></li>
-      {% else %}
-      <li><a href="/log">Log</a></li>
-      {% endif %}
-    </ul>
-    <div>{{ user }}</div>
+  <nav id="menu">
+    <h1>
+      <a href="/">e-trial manager</a>
+    </h1>
+    <a href="/documents"{% if request.path == "/documents" %} class="current"{% endif %}>
+      <div class="emoji">📖</div>
+      <div class="text">Documents</div>
+    </a><a href="/log"{% if request.path == "/log" %} class="current"{% endif %}>
+      <div class="emoji">📃</div>
+      <div class="text">Log</div>
+    </a><a href="/settings"{% if request.path == "/settings" %} class="current"{% endif %}>
+      <div class="emoji">⚙️</div>
+      <div class="text">Settings</div>
+    </a>
   </nav>
 
+  {% block submenu %}
+  {% endblock %}
+
+  <section>
   {% block content %}{% endblock %}
+  </section>
+
+  <footer>
+    <table>
+      <tr>
+        <th>User</th>
+        <td>{{ user }}</td>
+      </tr>
+      <tr>
+        <th>Secure volume status</th>
+        <td>Decrypted at some date or time</td>
+      </tr>
+      <tr>
+        <th>Backup status</th>
+        <td>Replicated to somewhere at some date or time</td>
+      </tr>
+    </table>
+  </footer>
+
   <script type="text/javascript" src="/static/etrial.js"></script>
 
 </body>

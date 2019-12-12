@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+
+<nav>
+<div class="query">Showing <select>
+  <option>all documents</option>
+</select> ordered by <select>
+  <option>identifier</option>
+  <option>upload time</option>
+  <option>title</option>
+</select></div>
+<div class="filter"><div class="emoji">🔍</div><input placeholder="Quick filter &hellip;"></div>
+</nav>
+
+<table id="docs">
+  <tr>
+    <th colspan="2">Identifier</th>
+    <th colspan="2">Title</th>
+    <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
+  </tr>
+  {% for hash, metadata in files.items() %}
+  <tr>
+    <td class="identifier tooltip with-button">
+      <div class="tip">{{ hash }}</div>
+      {% if metadata.identifier %}
+      <strong>{{ metadata.identifier }}</strong>
+    </td><td>
+      <button class="edit" data-hash="{{hash}}"
+        title="Edit identifier">✏️</button>
+      {% else %}
+      <code>{{hash|truncate(9)|safe}}</code>
+    </td><td>
+      <button class="assign" data-arg="MFI" data-hash="{{hash}}"
+        title="Magically assign the next identifier">✨</button>
+      {% endif %}
+    </td>
+    <td class="with-button">
+      <a href="/docs/{{ hash }}">{{ metadata.title }}</a>
+    </td><td>
+      <button class="edit">✏️</button>
+    </td>
+    <td class="judge published" data-hash="{{hash}}"></td>
+    <td class="jury unpublished" data-hash="{{hash}}"></td>
+    <td class="witness unpublished" data-hash="{{hash}}"></td>
+    <td class="delete"><button data-hash="{{hash}}">❌</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<pre>{{ cert }}</pre>
+
+{% endblock %}
