@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Log{% endblock %}
+
+{% block submenu %}
+<nav id="submenu">
+  <a href="#admin">Administrator activity</a>
+  <a href="#user">User activity</a>
+</nav>
+{% endblock %}
+
 {% block content %}
+
+<h2>Administrator activity</h2>
 
 <nav>
 <div class="query">Showing <select>
@@ -11,5 +21,7 @@
 </select> order</div>
 <div class="filter"><div class="emoji">🔍</div><input placeholder="Quick filter &hellip;"></div>
 </nav>
+
+<h2>User activity</h2>
 
 {% endblock %}
