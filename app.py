@@ -16,7 +16,7 @@ from flask import Flask, flash, g, render_template, redirect, request
 
 CRYPT_ROOT = '/secure/'
 FILES_DIR = os.path.join(CRYPT_ROOT, 'files')
-CERTS_DIR = os.path.join(CRYPT_ROOT, 'certs')
+KEYS_DIR = os.path.join(CRYPT_ROOT, 'keys')
 
 # The metadata file is essentially a small database. The logs are also stored
 # in plain text and interrogated using basic utilities. Configuring the logger
@@ -58,8 +58,8 @@ def save_metadata(md):
 
 def get_user_name():
     cert = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Certificate'))
-    for c in os.listdir(CERTS_DIR):
-        with open(os.path.join(CERTS_DIR, c)) as fd:
+    for c in os.listdir(KEYS_DIR):
+        with open(os.path.join(KEYS_DIR, c)) as fd:
             if cert == fd.read():
                 return c.replace('.crt', '')
 
@@ -106,8 +106,8 @@ def log():
 def admin():
     metadata = load_metadata()
     user = get_user_name()
-    certs = os.listdir(CERTS_DIR)
-    return render_template('settings.html', certs=certs)
+    keys = os.listdir(KEYS_DIR)
+    return render_template('settings.html', keys=keys)
 
 # The remaining routes all define commands of some sort. This one is used to
 # create a new administrative user. It generates an HTTPS certificate bundle

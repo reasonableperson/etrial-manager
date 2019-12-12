@@ -35,9 +35,9 @@ They can download, add or remove any documents.</p>
     <th>Created on</th>
     <th>Delete</th>
   </tr>
-  {% for cert in certs %}
+  {% for key in keys %}
   <tr>
-    <td>{{ cert }}</td>
+    <td>{{ key }}</td>
     <td>(date and time)</td>
     <td><button class="delete">Delete</button></td>
   </tr>
@@ -64,9 +64,9 @@ using the SSH key.</p>
     <th>Group</th>
     <th>Delete</th>
   </tr>
-  {% for cert in certs %}
+  {% for key in keys %}
   <tr>
-    <td>{{ cert }}</td>
+    <td>{{ key }}</td>
     <td>Jury</td>
     <td><button class="delete">Delete</button></td>
   </tr>
