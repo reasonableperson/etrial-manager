@@ -33,7 +33,7 @@ section > nav .filter .emoji { font-size: 1.5em }
 section table { width: 100%; padding: 1em; border-collapse: collapse }
 section table td, section table th { border: 1px #ccc solid; padding: 0.5em; }
 
-section table th.sort span { display: none }
+section table th.sort { white-space: nowrap }
 section table th.sort.active::after { content: " ▴" }
 section table th.sort.active.reverse::after { content: " ▾" }
 

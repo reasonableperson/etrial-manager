@@ -17,10 +17,18 @@
 
 <table id="docs">
   <tr>
-    <th colspan="2">Identifier</th>
-    <th colspan="2" class="sort{% if sort.field == 'title' %} active{% endif %}{% if sort.reverse %} reverse{% endif %}">
-      <a href="?sort=title{% if not sort.reverse %}&reverse{% endif %}">Title</a></th>
-    <th>Added</th>
+    <th colspan="2" class="sort{% if sort.field == 'identifier' %}
+      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+      <a href="?sort=identifier{% if not sort.reverse %}&reverse{% endif %}"> 
+        Identifier</a></th>
+    <th colspan="2" class="sort{% if sort.field == 'title' %}
+      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+      <a href="?sort=title{% if not sort.reverse %}&reverse{% endif %}"> 
+        Title</a></th>
+    <th class="sort{% if sort.field == 'added' %}
+      active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+      <a href="?sort=added{% if not sort.reverse %}&reverse{% endif %}"> 
+        Added</a></th>
     <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
   </tr>
   {% for hash, metadata in metadata %}
