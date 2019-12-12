@@ -1,6 +1,7 @@
 import collections
 import datetime
 import hashlib
+import json
 import logging
 import os
 import pytz
@@ -61,6 +62,13 @@ def get_user_name():
         with open(os.path.join(CERTS_DIR, c)) as fd:
             if cert == fd.read():
                 return c.replace('.crt', '')
+
+def audit(action, other_data):
+    data = { 'time': str(sydney_time()),
+             'user': get_user_name(),
+             'action': action }
+    data.update(other_data)
+    logging.info(json.dumps(data))
 
 # Now it's time to define some routes. The home page is just a list of all the
 # documents available.
@@ -128,11 +136,11 @@ def create_limited_user():
 def identify(_hash, prefix):
     metadata = load_metadata()
     user = get_user_name()
-    logging.info(_hash, prefix)
-    existing_identifiers = [d.replace(prefix, '') for d in metadata.values() if d.get('id') is not None and d.get('id')[:len(prefix)] == prefix]
-    logging.info('existing ids:', existing_identifiers)
-    metadata[_hash].update({ 'identifier': f'{prefix} 1' })
-    save_metadata(metadata)
+    audit('identify', {'hash': _hash, 'prefix': prefix})
+    #existing_identifiers = [d.replace(prefix, '') for d in metadata.values() if d.get('id') is not None and d.get('id')[:len(prefix)] == prefix]
+    #logging.info('existing ids:', existing_identifiers)
+    #metadata[_hash].update({ 'identifier': f'{prefix} 1' })
+    #save_metadata(metadata)
     return 'ok'
 
 # Delete a document from the database. This should be stuck behind a
@@ -142,9 +150,14 @@ def identify(_hash, prefix):
 def delete(_hash):
     metadata = load_metadata()
     user = get_user_name()
-    del metadata[_hash]
-    save_metadata(metadata)
-    return 'ok'
+    published_to = metadata[_hash].get('published')
+    if published_to is None or published_to == []:
+        del metadata[_hash]
+        audit('delete', {'hash': _hash})
+        save_metadata(metadata)
+        return f'Deleted hash {_hash}.', 200
+    else:
+        return f'Can\'t delete hash {_hash}, it\'s published.', 400
 
 # Add a new document to the database.
 
@@ -152,8 +165,8 @@ def delete(_hash):
 def upload():
     metadata = load_metadata()
     user = get_user_name()
-    logging.info(f'Received {len(request.data)} bytes.')
     title = request.args.get('filename')
+    logging.info(f'user={user}|action=upload|title=\'{title}\'|size_mb={len(request.data)/10**6:.2f}|time={sydney_time()}')
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
@@ -166,19 +179,18 @@ def upload():
 def refresh_hardlinks(metadata, user_group):
     user_dir = os.path.join(CRYPT_ROOT, user_group)
     existing_hardlinks = os.listdir(user_dir)
-    for _hash, meta in metadata.values():
-        if user_group in meta.published:
-            source = os.path.join(FILES_DIR, _hash)
-            destination = os.path.join(user_dir, meta.title)
-            # These documents have been newly published
-            if destination not in existing_hardlinks:
+    for _hash, meta in metadata.items():
+        source = os.path.join(FILES_DIR, _hash)
+        destination = os.path.join(user_dir, meta['title'])
+        if 'published' in meta and user_group in meta['published']:
+            if meta['title'] not in existing_hardlinks:
+                # These documents have been newly published
                 os.link(source, destination)
-                existing_hardlinks.remove(destination)
-                logging.info(f'Linked {_hash} to {destination}.')
+                audit('link', {'source': source, 'destination': destination})
         # These documents have been newly recalled
-        elif destination in existing_hardlinks:
+        elif meta['title'] in existing_hardlinks:
             os.remove(destination)
-            logging.info(f'Removed link from {_hash} to {destination}.')
+            audit('unlink', {'destination': destination})
 
 # Publish a document to the specified user group.
 
@@ -186,9 +198,10 @@ def refresh_hardlinks(metadata, user_group):
 def publish(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
-    logging.info(f'Publishing {_hash} ({doc["title"]}) to user_group {user_group}.')
+    audit('publish', {'hash': _hash, 'title': doc['title'], 'user_group': user_group})
     if 'published' not in metadata[_hash]: metadata[_hash]['published'] = []
     metadata[_hash]['published'].append(user_group)
+    refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return 'yo'
 
@@ -196,7 +209,8 @@ def publish(_hash, user_group):
 def recall(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
-    logging.info(f'Recalling {_hash} ({doc["title"]}) from user_group {user_group}.')
+    audit('recall', {'hash': _hash, 'title': doc['title'], 'user_group': user_group})
     metadata[_hash]['published'].remove(user_group)
+    refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return 'yo'
