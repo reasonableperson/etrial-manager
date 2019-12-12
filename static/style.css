@@ -33,12 +33,17 @@ section > nav .filter .emoji { font-size: 1.5em }
 section table { width: 100%; padding: 1em; border-collapse: collapse }
 section table td, section table th { border: 1px #ccc solid; padding: 0.5em; }
 
+section table th.sort span { display: none }
+section table th.sort.active::after { content: " ▴" }
+section table th.sort.active.reverse::after { content: " ▾" }
+
 section table td.with-button { border-right: none }
 section table td.with-button + td { border-left: none }
 
 section table .delete { text-align: center }
 
 section table .identifier { white-space: nowrap }
+section table .added { white-space: nowrap; text-align: right }
 
 section table .tooltip { position: relative; cursor: pointer }
 section table .tooltip:hover { background: #e1d1f0; transition: background 0.3s ease-out }

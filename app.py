@@ -1,14 +1,10 @@
-import base64
+import collections
 import hashlib
-import json
 import logging
-import io
 import os
 import urllib
-import sys
 
 import toml
-
 from flask import Flask, flash, g, render_template, redirect, request
 
 # The case-specific state of this app should all be mounted on secure
@@ -71,9 +67,17 @@ def home():
 
 @app.route('/documents')
 def documents():
-    metadata = load_metadata()
+    sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
+    print('sort', sort)
+    if sort['field'] not in ['added', 'identifier', 'title']:
+        if sort['field'] is not None: return redirect('/documents')
+        else: sort['field'] = 'added'
+    sort['reverse'] = sort['reverse'] == ''
+    sort_key = (lambda field: lambda pair: pair[1].get(field) or '')(sort['field'])
+    metadata = sorted(load_metadata().items(), key=sort_key, reverse=sort['reverse'])
+    print('sorted', metadata)
     user = get_user_name()
-    return render_template('documents.html', files=metadata, user=user)
+    return render_template('documents.html', metadata=metadata, user=user, sort=sort)
 
 # The log page provides tools for inspecting this application's own logs, stored
 # on the encrypted partition.

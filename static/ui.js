@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // which covers the entire viewport and is not displayed by default. These
   // functions can be used to 'highlight' the viewport, to indicate that it is
   // ready to receive a dropped file, by making #highlight visible.
-  const overlay = document.getElementById('highlight')
+  const overlay = document.getElementById('drag-drop-overlay')
   const highlight = function (event)  {
     event.preventDefault()
     overlay.classList.add('active')
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('dragover', highlight, false)
   document.addEventListener('drop', accept, false)
 
-  document.getElementById('notifications').addEventListener('click', cancelUpload, false)
+  //document.getElementById('notifications').addEventListener('click', cancelUpload, false)
   document.getElementById('docs').addEventListener('click', handleButtons, false)
 
 })

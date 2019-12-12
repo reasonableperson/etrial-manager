@@ -2,6 +2,8 @@
 {% block title %}Documents{% endblock %}
 {% block content %}
 
+<div id="drag-drop-overlay"></div>
+
 <nav>
 <div class="query">Showing <select>
   <option>all documents</option>
@@ -16,10 +18,12 @@
 <table id="docs">
   <tr>
     <th colspan="2">Identifier</th>
-    <th colspan="2">Title</th>
+    <th colspan="2" class="sort{% if sort.field == 'title' %} active{% endif %}{% if sort.reverse %} reverse{% endif %}">
+      <a href="?sort=title{% if not sort.reverse %}&reverse{% endif %}">Title</a></th>
+    <th>Added</th>
     <th>Judge</th><th>Jury</th><th>Witness</th><th>Delete</th>
   </tr>
-  {% for hash, metadata in files.items() %}
+  {% for hash, metadata in metadata %}
   <tr>
     <td class="identifier tooltip with-button">
       <div class="tip">{{ hash }}</div>
@@ -39,6 +43,10 @@
       <a href="/docs/{{ hash }}">{{ metadata.title }}</a>
     </td><td>
       <button class="edit">✏️</button>
+    </td>
+    <td class="added">
+      <span class="date">{{ metadata.added.strftime('%-d %b') }}</span><br>
+      <span class="tim">{{ metadata.added.strftime('%-I:%M %p')|lower }}</span>
     </td>
     <td class="judge published" data-hash="{{hash}}"></td>
     <td class="jury unpublished" data-hash="{{hash}}"></td>
