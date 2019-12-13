@@ -33,7 +33,7 @@ container's root user: `chown vu-etrial-0:vg-etrial-0 /home/scott/work/etrial-de
 Bootstrap the OS:
 
     pacstrap -c /var/lib/machines/etrial base \
-      nginx gunicorn python-flask python-toml python-pytz \
+      nginx gunicorn python-dateutil python-flask python-toml python-pytz \
       openssh sshguard \
       exa git vim
 

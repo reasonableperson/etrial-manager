@@ -7,6 +7,8 @@ import os
 import subprocess
 import urllib
 
+import dateutil.parser
+import dateutil.tz
 import pytz
 import toml
 from flask import Flask, flash, g, render_template, redirect, request
@@ -116,15 +118,27 @@ def log():
 
 @app.template_filter('strptime')
 def template_filter_strptime(iso8601):
-    return datetime.datetime.strptime(iso8601, "%Y-%m-%dT%H:%M:%SZ")
-
-@app.template_filter('strftime')
-def template_filter_strftime(dt):
-    return dt.strftime('%-I:%M %p').lower()
+    return dateutil.parser.parse(iso8601)
 
 @app.template_filter('strfdate')
 def template_filter_strfdate(dt):
-    return dt.strftime('%a %-d %b')
+    return dt.astimezone(dateutil.tz.tzlocal()).strftime('%a %-d %b')
+
+@app.template_filter('strfdate_long')
+def template_filter_strfdate(dt):
+    return dt.astimezone(dateutil.tz.tzlocal()).strftime('%a %-d %b %Y')
+
+@app.template_filter('strftime')
+def template_filter_strftime(dt):
+    return dt.astimezone(dateutil.tz.tzlocal()).strftime('%-I:%M %p').lower()
+
+@app.template_filter('strftime_long')
+def template_filter_strftime(dt):
+    return dt.astimezone(dateutil.tz.tzlocal()).strftime('%-I:%M:%S %p').lower()
+
+@app.template_filter('strftz')
+def template_filter_strftime(dt):
+    return dt.astimezone(dateutil.tz.tzlocal()).strftime('%Z')
 
 # The settings page is used to back up the device, add and remove users, and
 # perform other administrative tasks.
