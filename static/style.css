@@ -10,7 +10,7 @@ nav#submenu a { font-weight: normal; border-bottom: 1px #e1d1f0 solid }
 nav#submenu a:first-child { margin-left: auto; border-left: 1px #e1d1f0 solid }
 
 section { margin: 2em 3em }
-section #drag-drop-overlay { width: 100%; height: 100%;
+section #drag-drop-overlay {
   position: absolute; top: 0; left: 0; padding-top: 20%;
   text-align: center; font-size: 3em; color: white;
   background: #3a0870; z-index: -1; opacity: 0;
