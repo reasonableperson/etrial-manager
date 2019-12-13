@@ -25,7 +25,7 @@
   <tbody>
     {% for l in log %}<tr>
       <td class="date">{{ l.timestamp | strptime | strfdate }}</td>
-      <td>{{ l.timestamp | strptime | strftime }}</td>
+      <td class="time">{{ l.timestamp | strptime | strftime }}</td>
       <td>{{ l.extra.user if l.extra.user else l.ip if l.ip }}</td>
       <td>{{ l.app }}</td>
       <td>{{ l.extra.action if l.extra.action else l.http_status if l.http_status }}</td>
