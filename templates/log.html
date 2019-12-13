@@ -1,13 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Log{% endblock %}
 
-{% block submenu %}
-<nav id="submenu">
-  <a href="#admin">Administrator activity</a>
-  <a href="#user">User activity</a>
-</nav>
-{% endblock %}
-
 {% block content %}
 
 <nav>
@@ -22,20 +15,23 @@
 
 <table id="log">
   <thead> <tr>
+    <th>Date</th>
     <th>Time</th>
-    <th>Source</th>
-    <th>IP</th>
-    <th>HTTP</th>
+    <th>User</th>
+    <th>Logger</th>
+    <th>Event</th>
     <th>Message</th>
   </tr></thead>
   <tbody>
     {% for l in log %}<tr>
-      <td>{{ l.timestamp }}</td>
+      <td class="date">{{ l.timestamp | strptime | strfdate }}</td>
+      <td>{{ l.timestamp | strptime | strftime }}</td>
+      <td>{{ l.extra.user if l.extra.user else l.ip if l.ip }}</td>
       <td>{{ l.app }}</td>
-      <td>{{ l.ip }}</td>
-      <td>{{ l.http_status }}</td>
-      <td>{{ l.msg }}</td>
-      {#<td>{{ l }}</td>#}
+      <td>{{ l.extra.action if l.extra.action else l.http_status if l.http_status }}</td>
+      <td>{{ l.info if l.info else l.warn if l.warn else l.msg }}
+        {# <div class="full">{{ l.msg }}</div> #}
+      </td>
     </tr>{% endfor %}
   </tbody>
 </table>

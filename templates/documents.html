@@ -58,8 +58,8 @@
         <button class="edit">✏️</button>
       </td>
       <td class="added">
-        <span class="date">{{ meta.added.strftime('%a %-d %b') }}</span><br>
-        <span class="time">{{ meta.added.strftime('%-I:%M %p')|lower }}</span>
+        <span class="date">{{ meta.added | strfdate }}</span><br>
+        <span class="time">{{ meta.added | strftime }}</span>
       </td>
       <td class="matrix {% if 'judge' in meta.published %}published{% endif %}"
         data-hash="{{hash}}" data-user-group="judge"></td>

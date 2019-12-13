@@ -39,6 +39,8 @@ logging.basicConfig(level=logging.INFO, handlers=[LOG_FILE, logging.StreamHandle
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'_\xfd\xd9\xe53\x00\x8e\xbc\xa4\x14-\x97\x11\x0e&>'
 
+TZ = pytz.timezone('Australia/Sydney')
+
 # These functions load and dump the database to a TOML file. Performance isn't
 # really much of an issue since we rarely would have as much as 1 MB of data.
 # Using a TOML file means that Windows users can easily inspect and edit the
@@ -84,7 +86,7 @@ def home():
 
 @app.route('/documents')
 def documents():
-    def sydney_time(): return datetime.datetime.now(pytz.timezone('Australia/Sydney'))
+    def sydney_time(): return datetime.datetime.now(TZ)
     g.now = sydney_time()
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
@@ -108,15 +110,21 @@ def log():
     stdout = subprocess.run(script, capture_output=True).stdout.decode('utf-8')
     _json = [json.loads(l) for l in stdout.split('\n') if l != '']
 
-    # hack to work around the fact that the logs are heterogenour
-    for l in _json:
-        extra = {'msg': l['msg']}
-        if l.get('extra'): extra.update(l['extra'])
-        l.update(extra)
-        del l['extra']
-    if request.args.get('reverse') == '': _json.reverse()
+    if not request.args.get('reverse') == '': _json.reverse()
 
     return render_template('log.html', log=_json)
+
+@app.template_filter('strptime')
+def template_filter_strptime(iso8601):
+    return datetime.datetime.strptime(iso8601, "%Y-%m-%dT%H:%M:%SZ")
+
+@app.template_filter('strftime')
+def template_filter_strftime(dt):
+    return dt.strftime('%-I:%M %p').lower()
+
+@app.template_filter('strfdate')
+def template_filter_strfdate(dt):
+    return dt.strftime('%a %-d %b')
 
 # The settings page is used to back up the device, add and remove users, and
 # perform other administrative tasks.
@@ -191,7 +199,7 @@ def upload():
     _hash = h.hexdigest()
     with open(os.path.join(ADMIN_DIR, 'files', _hash), 'wb') as fd:
         fd.write(request.data)
-    metadata[_hash] = { 'title': title, 'added': datetime.datetime.now(pytz.timezone('Australia/Sydney')) }
+    metadata[_hash] = { 'title': title, 'added': datetime.datetime.now(TZ) }
     save_metadata(metadata)
     return 'Thanks.'
 

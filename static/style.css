@@ -51,7 +51,7 @@ section table th.sort.active.reverse::after { content: " ▾" }
 section table td.with-button { border-right: none }
 section table td.with-button + td { border-left: none }
 
-section table .identifier { white-space: nowrap }
+section table .identifier, section table .date { white-space: nowrap }
 section table .added { white-space: nowrap; text-align: right }
 
 section table .tooltip { position: relative; cursor: pointer }

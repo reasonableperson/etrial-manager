@@ -13,7 +13,7 @@ journalctl $extra_flag -u nginx -u gunicorn -o json \
     # These functions attempt to get something useful out of a string, and fail
     # with a null.
     def maybe_nginx: (capture("etrial (?<src>nginx):") | .src) // null;
-    def maybe_ip: (capture(" (?<ip>([0-9.]+){3}[0-9]+)[, ]") | .ip) // null;
+    def maybe_ip: (capture(" (?<ip>([0-9.]{2,}){3}[0-9]+)[, ]") | .ip) // null;
     def maybe_http_status: (capture("\"(?<qs>[^\"]*)\" (?<code>\\d{3})") | .code) // null;
     def maybe_double_json: (capture("(?<json>\\{.*\\})") | .json | fromjson ) // null;
     def maybe_info: (capture("(?i)(?<info>\\[info].*)") | .info) // null;
@@ -21,7 +21,7 @@ journalctl $extra_flag -u nginx -u gunicorn -o json \
 
     # These functions attempt to remove cruft from a string, and fail by passing
     # through the string unmodified.
-    def clean_nginx_access: (capture("\"(?<qs>[^\"]*)\" (?<code>\\d{3})") | .qs) // .;
+    def clean_nginx_access: (capture("\"(?<qs>[^\"]*) HTTP/1\\.1\" (?<code>\\d{3})") | .qs) // .;
 
     # These functions delete uninteresting records from the log. They should be
     # used cautiously; you never know when a log might come in handy.
@@ -29,8 +29,15 @@ journalctl $extra_flag -u nginx -u gunicorn -o json \
       select(.msg | test("GET /favicon.ico") | not) |
       select(.msg | test("GET /static/ui.js") | not) |
       select(.msg | test("GET /static/style.css") | not) ;
-    def filter_logger_debug: . |
-      select(.msg | test("loggerdebugger") | not) ;
+
+    # https://github.com/benoitc/gunicorn/issues/2091
+    def filter_gunicorn_bug_aug19: . |
+      select(.msg | test("RuntimeWarning: line buffering") | not) |
+      select(.msg | test("return io.open.fd, .args, ..kwargs.") | not) ;
+
+    def filter_gunicorn: . |
+      select(.msg | test(".INFO. Booting worker") | not) |
+      select(.msg | test(".INFO. Worker exiting") | not) ;
 
     # This filter consumes the journalctl output and produces a nicely-
     # formatted subset of it for rendering as HTML.
@@ -42,5 +49,5 @@ journalctl $extra_flag -u nginx -u gunicorn -o json \
       extra: (.MESSAGE | maybe_double_json),
       info: (.MESSAGE | maybe_info),
       warn: (.MESSAGE | maybe_warn),
-      msg: .MESSAGE,
-    } | filter_static_files | filter_logger_debug' 
+      msg: (.MESSAGE | clean_nginx_access),
+    } | filter_static_files | filter_gunicorn | filter_gunicorn_bug_aug19' 
