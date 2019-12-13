@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  maybeAttach('docs', 'click', handleButtons)
+  maybeAttach('documents', 'click', handleButtons)
 
   if (document.getElementById('submenu')) {
     document.getElementById('submenu').addEventListener('click', (e) => {
