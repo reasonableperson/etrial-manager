@@ -5,19 +5,21 @@ if [[ $(</proc/sys/kernel/hostname) != "etrial" ]]; then
   exit
 fi
 
-journalctl -f -u nginx -u gunicorn -o json \
+journalctl $1 -u nginx -u gunicorn -o json \
   --output-fields=UNIT,MESSAGE,SYSLOG_IDENTIFIER | jq -c '
 
     # These functions attempt to get something useful out of a string, and fail
     # with a null.
     def maybe_nginx: (capture("(?<src>nginx)") | .src) // null;
     def maybe_ip: (capture(" (?<ip>([0-9.]+){3}[0-9]+)[, ]") | .ip) // null;
-    def maybe_http_status: (capture("\" (?<code>[0-9]{3}) ") | .code) // null;
+    def maybe_http_status: (capture("\"(?<qs>[^\"]*)\" (?<code>\\d{3})") | .code) // null;
+    def maybe_double_json: (capture("INFO:root:(?<json>\\{.*\\})") | .json | fromjson ) // null;
+    def maybe_info: (capture("(?i)(?<info>\\[info].*)")) // null;
+    def maybe_warn: (capture("(?i)(?<warn>\\[warn].*)")) // null;
 
-    # These functions attempt to remove cruft from a string, and fail by passing
+    #These functions attempt to remove cruft from a string, and fail by passing
     # through the string unmodified.
-    def clean_nginx_access: (capture("\"(?<qs>[^\"]*)\"") | .qs) // .;
-    def clean_info: (capture("(?i)(?<info>\\[info].*)") | .info) // .;
+    def clean_nginx_access: (capture("\"(?<qs>[^\"]*)\" (?<code>\\d{3})") | .qs) // .;
 
     # These functions delete uninteresting records from the log. They should be
     # used cautiously; you never know when a log might come in handy.
@@ -33,6 +35,7 @@ journalctl -f -u nginx -u gunicorn -o json \
       source: (.SYSLOG_IDENTIFIER // (.MESSAGE | maybe_nginx )),
       ip: .MESSAGE | maybe_ip,
       http_status: .MESSAGE | maybe_http_status,
-      msg_clean: .MESSAGE | clean_nginx_access | clean_info | filter_static_files,
+      extra: ((.MESSAGE | maybe_double_json) // (.MESSAGE | maybe_info) // (.MESSAGE | maybe_warn)),
+      msg_clean: .MESSAGE | clean_nginx_access | filter_static_files,
       msg_original: .MESSAGE,
     }' 

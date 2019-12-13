@@ -65,8 +65,7 @@ def get_user_name():
                     return c.replace('.crt', '')
 
 def audit(action, other_data):
-    data = { 'time': str(sydney_time()),
-             'user': get_user_name(),
+    data = { 'user': get_user_name(),
              'action': action }
     data.update(other_data)
     logging.info(json.dumps(data))
@@ -171,7 +170,7 @@ def upload():
     metadata = load_metadata()
     user = get_user_name()
     title = request.args.get('filename')
-    logging.info(f'user={user}|action=upload|title=\'{title}\'|size_mb={len(request.data)/10**6:.2f}|time={sydney_time()}')
+    audit('upload', {'title': title, 'size_mb': len(request.data)/10**6})
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
