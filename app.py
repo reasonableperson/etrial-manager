@@ -4,9 +4,10 @@ import hashlib
 import json
 import logging
 import os
-import pytz
+import subprocess
 import urllib
 
+import pytz
 import toml
 from flask import Flask, flash, g, render_template, redirect, request
 
@@ -14,6 +15,8 @@ from flask import Flask, flash, g, render_template, redirect, request
 # encrypted storage which disappears when power is lost (this may indicate
 # that the device was stolen).
 
+CODE_DIR = os.path.dirname(os.path.realpath(__file__))
+SCRIPT_DIR = os.path.join(CODE_DIR, 'scripts')
 ADMIN_DIR = '/home/etrial'
 FILES_DIR = '/home/etrial/files'
 CLIENT_CERT_DIR = '/home/etrial/https'
@@ -35,8 +38,6 @@ logging.basicConfig(level=logging.INFO, handlers=[LOG_FILE, logging.StreamHandle
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'_\xfd\xd9\xe53\x00\x8e\xbc\xa4\x14-\x97\x11\x0e&>'
-
-def sydney_time(): return datetime.datetime.now(pytz.timezone('Australia/Sydney'))
 
 # These functions load and dump the database to a TOML file. Performance isn't
 # really much of an issue since we rarely would have as much as 1 MB of data.
@@ -83,6 +84,7 @@ def home():
 
 @app.route('/documents')
 def documents():
+    def sydney_time(): return datetime.datetime.now(pytz.timezone('Australia/Sydney'))
     g.now = sydney_time()
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
@@ -101,7 +103,20 @@ def documents():
 def log():
     metadata = load_metadata()
     user = get_user_name()
-    return render_template('log.html')
+
+    script = [os.path.join(SCRIPT_DIR, 'filtered-journal.sh')]
+    stdout = subprocess.run(script, capture_output=True).stdout.decode('utf-8')
+    _json = [json.loads(l) for l in stdout.split('\n') if l != '']
+
+    # hack to work around the fact that the logs are heterogenour
+    for l in _json:
+        extra = {'msg': l['msg']}
+        if l.get('extra'): extra.update(l['extra'])
+        l.update(extra)
+        del l['extra']
+    if request.args.get('reverse') == '': _json.reverse()
+
+    return render_template('log.html', log=_json)
 
 # The settings page is used to back up the device, add and remove users, and
 # perform other administrative tasks.

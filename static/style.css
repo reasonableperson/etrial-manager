@@ -36,12 +36,14 @@ section > nav .filter { display: flex; align-items: center }
 section > nav .filter input { height: 1.2em }
 section > nav .filter .emoji { font-size: 1.5em }
 
-section table { width: 100%; padding: 1em; border-collapse: collapse }
+table#documents { width: 100% }
+table#documents td, table#documents th { height: 3em }
+
+section table { padding: 1em; border-collapse: collapse }
+section table td, section table th { border: 1px #ccc solid; padding: 0.5em; max-width: 40em }
+
 section table thead { background: #e1d1f0 }
-section table td, section table th { border: 1px #ccc solid; padding: 0.5em; height: 3em }
-
 section table th.rotate { transform: rotate(-60deg); padding: 0 }
-
 section table th.sort { white-space: nowrap }
 section table th.sort.active::after { content: " ▴" }
 section table th.sort.active.reverse::after { content: " ▾" }

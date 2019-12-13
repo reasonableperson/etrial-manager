@@ -10,8 +10,6 @@
 
 {% block content %}
 
-<h2>Administrator activity</h2>
-
 <nav>
 <div class="query">Showing <select>
   <option>all events</option>
@@ -22,6 +20,24 @@
 <div class="filter"><div class="emoji">🔍</div><input placeholder="Quick filter &hellip;"></div>
 </nav>
 
-<h2>User activity</h2>
+<table id="log">
+  <thead> <tr>
+    <th>Time</th>
+    <th>Source</th>
+    <th>IP</th>
+    <th>HTTP</th>
+    <th>Message</th>
+  </tr></thead>
+  <tbody>
+    {% for l in log %}<tr>
+      <td>{{ l.timestamp }}</td>
+      <td>{{ l.app }}</td>
+      <td>{{ l.ip }}</td>
+      <td>{{ l.http_status }}</td>
+      <td>{{ l.msg }}</td>
+      {#<td>{{ l }}</td>#}
+    </tr>{% endfor %}
+  </tbody>
+</table>
 
 {% endblock %}

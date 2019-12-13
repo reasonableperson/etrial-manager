@@ -4,6 +4,7 @@ Requires=nginx.service
 After=network.target
 
 [Service]
+Group=systemd-journal
 WorkingDirectory=/var/lib/etrial
 ExecStartPre=-useradd -m etrial
 ExecStartPre=-mkdir -p /home/etrial/files
@@ -14,6 +15,8 @@ ExecStart=/usr/bin/gunicorn --user etrial --reload \
   --reload-extra-file templates/log.html  \
   --reload-extra-file templates/settings.html  \
   app:app
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
