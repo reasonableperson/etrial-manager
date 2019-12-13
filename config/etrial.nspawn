@@ -1,0 +1,6 @@
+[Network]
+MACVLAN=eno1
+
+[Files]
+BindReadOnly=/home/scott/git/etrial:/var/lib/etrial
+PrivateUsers=pick

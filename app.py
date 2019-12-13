@@ -14,9 +14,10 @@ from flask import Flask, flash, g, render_template, redirect, request
 # encrypted storage which disappears when power is lost (this may indicate
 # that the device was stolen).
 
-CRYPT_ROOT = '/secure/'
-FILES_DIR = os.path.join(CRYPT_ROOT, 'files')
-KEYS_DIR = os.path.join(CRYPT_ROOT, 'keys')
+SECURE_ROOT = '/home'
+ADMIN_DIR = '/home/etrial'
+FILES_DIR = '/home/etrial/files'
+CLIENT_CERT_DIR = '/home/etrial/https'
 
 # The metadata file is essentially a small database. The logs are also stored
 # in plain text and interrogated using basic utilities. Configuring the logger
@@ -25,8 +26,8 @@ KEYS_DIR = os.path.join(CRYPT_ROOT, 'keys')
 # system-level logs to /tmp and rely on these encrypted, lower-traffic logs as
 # the sole audit trail.
 
-METADATA_FILE = os.path.join(CRYPT_ROOT, 'metadata.toml.txt')
-LOG_FILE = logging.FileHandler(os.path.join(CRYPT_ROOT, 'etrial.log.txt'))
+METADATA_FILE = os.path.join(ADMIN_DIR, 'metadata.toml.txt')
+LOG_FILE = logging.FileHandler(os.path.join(ADMIN_DIR, 'etrial.log.txt'))
 logging.basicConfig(level=logging.INFO, handlers=[LOG_FILE, logging.StreamHandler()])
 
 # Now that we've set up some constants that govern our interaction with the
@@ -58,10 +59,11 @@ def save_metadata(md):
 
 def get_user_name():
     cert = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Certificate'))
-    for c in os.listdir(KEYS_DIR):
-        with open(os.path.join(KEYS_DIR, c)) as fd:
-            if cert == fd.read():
-                return c.replace('.crt', '')
+    for c in os.listdir(CLIENT_CERT_DIR):
+        if c[-4:] == '.crt':
+            with open(os.path.join(CLIENT_CERT_DIR, c)) as fd:
+                if cert == fd.read():
+                    return c.replace('.crt', '')
 
 def audit(action, other_data):
     data = { 'time': str(sydney_time()),
@@ -106,7 +108,7 @@ def log():
 def admin():
     metadata = load_metadata()
     user = get_user_name()
-    keys = os.listdir(KEYS_DIR)
+    keys = os.listdir(CLIENT_CERT_DIR)
     return render_template('settings.html', keys=keys)
 
 # The remaining routes all define commands of some sort. This one is used to
@@ -170,14 +172,14 @@ def upload():
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
-    with open(os.path.join(CRYPT_ROOT, 'files', _hash), 'wb') as fd:
+    with open(os.path.join(ADMIN_DIR, 'files', _hash), 'wb') as fd:
         fd.write(request.data)
     metadata[_hash] = { 'title': title, 'added': datetime.datetime.now(pytz.timezone('Australia/Sydney')) }
     save_metadata(metadata)
     return 'Thanks.'
 
 def refresh_hardlinks(metadata, user_group):
-    user_dir = os.path.join(CRYPT_ROOT, user_group)
+    user_dir = os.path.join(SECURE_ROOT, user_group)
     existing_hardlinks = os.listdir(user_dir)
     for _hash, meta in metadata.items():
         source = os.path.join(FILES_DIR, _hash)

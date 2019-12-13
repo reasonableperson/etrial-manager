@@ -9,144 +9,87 @@ x86 and ARM are too different to make this a Raspberry Pi project. It may be
 better simply to deploy this on a laptop. But the techniques should be generally
 useful for the Raspberry Pi idea as well.
 
-## Creating the container
+# Create a virtual server to run the etrial software
+
+On the host OS, create a filesystem that will host the base OS. This filesystem
+will be unencrypted and will need to get as far as booting our web application,
+allowing the user to supply the key to decrypt `/home`.
+
+This command will create a `systemd-nspawn` container called `etrial`, with an
+unconfigured MACVLAN network interface, and a read-only binding for
+`/var/lib/etrial`. The `systemd-nspawn` `PrivateUsers=pick` option is used to
+enhance security.
+
+For now, it also mounts `/home` for convenience but this needs to be replaced
+with an encrypted volume. The bound `/home` directory must be owned by the
+container's root user: `chown vu-etrial-0:vg-etrial-0 /home/scott/work/etrial-demo`.
 
     mkdir /var/lib/machines/etrial
+    cp config/etrial.nspawn /etc/systemd/nspawn
+
+Bootstrap the OS:
+
     pacstrap -c /var/lib/machines/etrial base \
-      entr gunicorn nginx python-toml python-pytz python-flask \
+      nginx gunicorn python-flask python-toml python-pytz \
       openssh sshguard \
-      vim
+      exa git vim
 
-Add pts/0 to pts/9 as permissible root login ttys:
+Configure the container's network interface with the custom MAC address
+`4a:f0:e5:e2:be:ef`, and configure it to ask your local DHCP server for an IP:
 
-    for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
+    cp config/mv-eno1.network /var/lib/machines/etrial/etc/systemd/network
+    ln -s /var/lib/machines/etrial/usr/lib/systemd/system/systemd-networkd.service \
+      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+    ln -s /usr/lib/systemd/system/systemd-resolved.service \
+      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
 
-Create a MACVLAN interface for the container, and give it access to a location
-on your local system:
+Copy and generate nginx config:
 
-    >> /etc/systemd/nspawn/etrial.nspawn \
-    echo '[Network]
-    MACVLAN=eno1
-    [Files]
-    Bind=/space/etrial:/secure
-    Bind=/home/scott/git/etrial:/home/etrial
-    PrivateUsers=pick
-
-Start the container and log in:
-
-    machinectl start etrial
-    machinectl login etrial
-    passwd
-
-Configure the network using DHCP:
-
-    >> /etc/systemd/network/mv-eno1.network echo '[Match]
-    Name=mv-eno1
-    [Link]
-    MACAddress=4a:f0:e5:e2:be:ef
-    [Network]
-    DHCP=ipv4'
-    systemctl enable systemd-networkd systemd-resolved
-    systemctl start systemd-networkd systemd-resolved
-
-Lock down SSH:
-
-    >> /etc/ssh/sshd_config echo '
-    PasswordAuthentication no
-    Match User jury
-    ForceCommand internal-sftp
-    ChrootDirectory /home/jury
-    PermitTunnel no
-    AllowAgentForwarding no
-    AllowTcpForwarding no
-    X11Forwarding no'
-
-Port forward SSH on your router.
-
-# Configure gunicorn
-
-Automatically start the Flask app using Gunicorn on boot:
-
-    useradd etrial
-
-    > /etc/systemd/system/etrial-web.service echo '[Unit]
-    Description=Flask etrial app
-    After=network.target
-    [Service]
-    Type=simple
-    User=etrial
-    WorkingDirectory=/home/etrial
-    ExecStart=/usr/bin/gunicorn --access-logfile - --reload \
-      --reload-extra-file templates/base.html  \
-      --reload-extra-file templates/home.html  \
-      --reload-extra-file templates/admin.html  \
-      --reload-extra-file templates/log.html  \
-      app:app
-    KillMode=mixed
-    TimeoutStopSec=5
-    [Install]
-    WantedBy=multi-user.target'
-
-    systemctl enable etrial-web
-    systemctl start etrial-web
-
-# Configure nginx
-
-Copy the SSL wildcard certificate from nuclet:
-
+    scripts/create-ca.sh
+    cp config/nginx.conf /var/lib/machines/etrial/etc/nginx/nginx.conf
     cp /etc/letsencrypt/live/sjy.id.au/privkey.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.key
     cp /etc/letsencrypt/live/sjy.id.au/cert.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.crt
-    chown -R vu-etrial-0:vg-etrial-0 /var/lib/machines/etrial/etc/nginx
 
-# HTTPS authentication
+Install and enable the gunicorn service:
 
-In the container, create a CA and move the keyfile and certificate into the
-`nginx` configuration directory:
+    cp config/gunicorn.service /var/lib/machines/etrial/etc/systemd/system
+    ln -s /var/lib/machines/etrial/etc/systemd/system/gunicorn.service \
+      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/gunicorn.service
 
-    cd ~etrial
-    scripts/create-ca.sh
-    mv etrial.ca.* /etc/nginx
+Start the container and log in using the username `root` and no password.
 
-Then create a new user and move the certificate into the `certs` directory:
+    machinectl start etrial
 
-    scripts/add-https-user.sh "Scott Young"
-    mv *.crt certs
+This should get you to a fully configured nginx instance which you can reach
+on port 443.
 
-On nuclet, take ownership of the certificate so you can copy it directly from
-the container and import it into Firefox. Then, delete the PFX file.
+# Add HTTPS user
 
-    sudo chown scott:scott ~scott/git/etrial/"Scott Young.pfx"
+Since you have root access on the host OS, you can get a root shell in the
+container and generate a client certificate for yourself that way:
 
-# nginx config
+    for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
+    machinectl login etrial
 
-    > /etc/nginx.conf echo '
-    events { worker_connections 1024; }
-    http {
-      include mime.types;
-      server {
-          listen       443 ssl;
-          server_name  etrial.sjy.id.au;
-          client_max_body_size 4G;
-          ssl_certificate        sjy.id.au.crt;
-          ssl_certificate_key    sjy.id.au.key;
-          ssl_client_certificate etrial.ca.crt;
-          ssl_verify_client      on;
+Run `add-https-user-sh`. This will generate a new private key and certificate
+for the user, sign the certificate using the CA you generated earlier (the
+credentials were saved in `/etc/nginx/client.ca.key`), and produce a `.p12`
+file in the current directory (probably `/root`).
 
-          location / {
-              proxy_pass   http://127.0.0.1:8000;
-              proxy_set_header X-SSL-Client-Certificate $ssl_client_escaped_cert;
-          }
+The script needs to run interactively so that you can be prompted to provide a
+passphrase, if the key is to be transported insecurely.
 
-          location /static { root /home/etrial; }
-          location /docs { root /secure; }
-      }
-    }'
+    /var/lib/etrial/scripts/add-https-user.sh "Scott Young"
 
-    systemctl enable nginx
-    systemctl start nginx
+There is a handy script for creating a local copy of the certificate in
+`/home/scott/git/etrial` with normal permissions (ie. not owned by a container
+user).
+
+    scripts/pull-https-cert.sh
 
 # Creating SFTP users
 
+    for user in judge jury witness; do useradd -m $user; done
     groupadd sftp
 
 Use RSA keys for compatibility with GoodReader:
@@ -170,7 +113,3 @@ Use RSA keys for compatibility with GoodReader:
     X11Forwarding no'
 
     useradd judge -g sftp -s /bin/false
-
-
-
-

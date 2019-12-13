@@ -5,6 +5,8 @@ if (( $# != 1 )); then
   exit
 fi
 
+mkdir -p /home/etrial/https
+
 # Create private key.
 openssl ecparam -genkey -name secp256r1 | openssl ec -out "$1.key"
 
@@ -14,11 +16,15 @@ openssl req -new -key "$1.key" -out "$1.csr" \
 
 # Create certificate using CSR and etrial.ca.key.
 openssl x509 -req -days 365 \
-  -CA /etc/nginx/etrial.ca.crt -CAkey /etc/nginx/etrial.ca.key -set_serial 0x$(openssl rand -hex 8) \
-  -in "$1.csr" -out "$1.crt"
+  -CA /etc/nginx/client.ca.crt -CAkey /etc/nginx/client.ca.key \
+  -set_serial 0x$(openssl rand -hex 8) \
+  -in "$1.csr" -out "/home/etrial/https/$1.crt"
 
 # Create PKCS #12 archive.
-openssl pkcs12 -export -inkey "$1.key" -in "$1.crt" -out "$1.pfx"
+openssl pkcs12 -export -inkey "$1.key" -in "/home/etrial/https/$1.crt" \
+  -out "/home/etrial/https/$1.pfx"
+
+chown etrial:etrial -R /home/etrial/https
 
 # Delete unneeded artifacts.
-rm "$1.key" "$1.csr"
+rm "$1.csr" "$1.key"
