@@ -1,3 +1,6 @@
+TODO you can't publish documents, and you don't get an error message, when
+an SSH key hasn't been generated for that user group yet.
+
 # Arch environment for cloud SMB host
 
 This document describes a system for hosting a public-facing service that may
@@ -43,10 +46,16 @@ Configure the container's network interface with the custom MAC address
     ln -s /usr/lib/systemd/system/systemd-resolved.service \
       /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
 
+Copy sshd config and enable sshd service:
+
+    cp config/sshd_config /var/lib/machines/etrial/etc/ssh
+    ln -s /usr/lib/systemd/system/sshd.service \
+      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/sshd.service
+
 Copy and generate nginx config:
 
     scripts/create-ca.sh
-    cp config/nginx.conf /var/lib/machines/etrial/etc/nginx/nginx.conf
+    cp config/nginx.conf /var/lib/machines/etrial/etc/nginx
     cp /etc/letsencrypt/live/sjy.id.au/privkey.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.key
     cp /etc/letsencrypt/live/sjy.id.au/cert.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.crt
 
@@ -56,28 +65,28 @@ Install and enable the gunicorn service:
     ln -s /var/lib/machines/etrial/etc/systemd/system/gunicorn.service \
       /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/gunicorn.service
 
-Start the container and log in using the username `root` and no password.
+Allow a 'backdoor' login from the host using `machinectl login`, so that you
+can get an HTTPS certificate later:
 
-    machinectl start etrial
+    for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
 
 This should get you to a fully configured nginx instance which you can reach
 on port 443.
+
+    machinectl start etrial
 
 # Add HTTPS user
 
 Since you have root access on the host OS, you can get a root shell in the
 container and generate a client certificate for yourself that way:
 
-    for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
     machinectl login etrial
 
-Run `add-https-user-sh`. This will generate a new private key and certificate
-for the user, sign the certificate using the CA you generated earlier (the
-credentials were saved in `/etc/nginx/client.ca.key`), and produce a `.p12`
-file in the current directory (probably `/root`).
-
-The script needs to run interactively so that you can be prompted to provide a
-passphrase, if the key is to be transported insecurely.
+Generate a new private key and certificate for the user, sign the certificate
+using the CA you generated earlier (the credentials were saved in
+`/etc/nginx/client.ca.key`), and produce a `.pfx` file in the current directory
+(`/root`). The script is interactive; you'll get a chance to set a passphrase
+if you intend to send the certificate bundle over an insecure channel.
 
     /var/lib/etrial/scripts/add-https-user.sh "Scott Young"
 
@@ -89,27 +98,15 @@ user).
 
 # Creating SFTP users
 
-    for user in judge jury witness; do useradd -m $user; done
-    groupadd sftp
+Now that you're in the web interface, you can generate an SSH key. This is
+required in order to publish to users holding that SSH key.
 
-Use RSA keys for compatibility with GoodReader:
+This script will generate an SSH key for the specified class (judge, jury or
+witness), and create the required Unix account as well if it doesn't exist
+already. It uses RSA keys because compatibility with ed25519 is pretty poor
+among iOS apps.
 
-    useradd jury  -g sftp -s /bin/false
-    ssh-keygen -t rsa -m PEM -f jury.sshkey -C jury-$(date -I) -N ''
-    mkdir -p /home/jury/.ssh
-    ssh-keygen -y -f jury.sshkey > /home/jury/.ssh/authorized_keys
-    chown -R jury:sftp /home/jury
+    /var/lib/etrial/scripts/add-ssh-user.sh test1 jury
 
-
-    cp /var/lib/machines/etrial/home/jury/.ssh/jury.sshkey ~
-    chmod 777 ~/jury.sshkey
-
-    >> /etc/ssh/sshd_config echo 'Match User jury
-    ForceCommand internal-sftp
-    ChrootDirectory /home/jury
-    PermitTunnel no
-    AllowAgentForwarding no
-    AllowTcpForwarding no
-    X11Forwarding no'
-
-    useradd judge -g sftp -s /bin/false
+After running it, rather than downloading the key from the web interface you
+can fetch it using `scripts/pull-ssh-key.sh`.

@@ -6,7 +6,9 @@ After=network.target
 [Service]
 WorkingDirectory=/var/lib/etrial
 ExecStartPre=-useradd -m etrial
-ExecStart=/usr/bin/gunicorn --user etrial --access-logfile - --reload \
+ExecStartPre=-mkdir -p /home/etrial/files
+ExecStartPre=-chown etrial:etrial /home/etrial/files
+ExecStart=/usr/bin/gunicorn --user etrial --reload \
   --reload-extra-file templates/base.html  \
   --reload-extra-file templates/documents.html  \
   --reload-extra-file templates/log.html  \

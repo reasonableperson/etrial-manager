@@ -14,7 +14,6 @@ from flask import Flask, flash, g, render_template, redirect, request
 # encrypted storage which disappears when power is lost (this may indicate
 # that the device was stolen).
 
-SECURE_ROOT = '/home'
 ADMIN_DIR = '/home/etrial'
 FILES_DIR = '/home/etrial/files'
 CLIENT_CERT_DIR = '/home/etrial/https'
@@ -77,7 +76,11 @@ def audit(action, other_data):
 
 @app.route('/')
 def home():
-    return redirect('/documents')
+    try:
+        load_metadata()
+        return redirect('/documents')
+    except:
+        return "Can't read metadata file. You need to decrypt the secure partition.", 500
 
 @app.route('/documents')
 def documents():
@@ -179,7 +182,7 @@ def upload():
     return 'Thanks.'
 
 def refresh_hardlinks(metadata, user_group):
-    user_dir = os.path.join(SECURE_ROOT, user_group)
+    user_dir = f'/jails/{user_group}/etrial'
     existing_hardlinks = os.listdir(user_dir)
     for _hash, meta in metadata.items():
         source = os.path.join(FILES_DIR, _hash)
