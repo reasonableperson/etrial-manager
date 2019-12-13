@@ -1,5 +1,3 @@
-LogLevel DEBUG
-
 Port 7937
 
 PubkeyAuthentication yes
@@ -10,6 +8,6 @@ AllowAgentForwarding no
 AllowTcpForwarding no
 X11Forwarding no
 
-Subsystem sftp /usr/lib/ssh/sftp-server
+Subsystem sftp internal-sftp -l INFO
 ChrootDirectory /jails/%u
-ForceCommand internal-sftp
+ForceCommand internal-sftp -l INFO
