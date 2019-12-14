@@ -109,7 +109,7 @@ section table .tooltip .tip {
 
 /* Log page rules */
 
-
+#log td.message { word-break: break-all }
 
 /* Settings page rules */
 
