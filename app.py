@@ -73,6 +73,7 @@ def get_user_name():
 
 def log_silent(msg, level=logging.INFO):
     if type(msg) != dict: msg = {'message': msg}
+    msg['user'] = get_user_name()
     logging.log(level, json.dumps(msg))
     return msg
 

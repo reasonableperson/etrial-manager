@@ -31,7 +31,7 @@
       <td>{{ l.extra.user if l.extra.user else l.ip if l.ip }}</td>
       <td>{{ l.app }}</td>
       <td>{{ l.extra.action if l.extra.action else l.http_status if l.http_status }}</td>
-      <td>{{ l.info if l.info else l.warn if l.warn else l.msg }}
+      <td class="message">{{ l.info if l.info else l.warn if l.warn else l.msg }}
         {# <div class="full">{{ l.msg }}</div> #}
       </td>
     </tr>{% endfor %}
