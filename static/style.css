@@ -36,6 +36,13 @@ section > nav .filter { display: flex; align-items: center }
 section > nav .filter input { height: 1.2em }
 section > nav .filter .emoji { font-size: 1.5em }
 
+section #flashes {
+  position: fixed; left: 0; right: 0; top: 2em; text-align: center;
+  list-style-type: none; opacity: 0; transition: opacity 0.5s;
+}
+section #flashes li { display: inline-block; padding: 0.85em }
+section #flashes li.error { background: #ffc2c2 }
+
 table#documents { width: 100% }
 table#documents td, table#documents th { height: 3em }
 

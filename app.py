@@ -70,6 +70,7 @@ def get_user_name():
                     return c.replace('.crt', '')
 
 def audit(action, other_data):
+    if type(other_data) != dict: other_data = {'msg': other_data}
     data = { 'user': get_user_name(),
              'action': action }
     data.update(other_data)
@@ -90,6 +91,8 @@ def home():
 def documents():
     def sydney_time(): return datetime.datetime.now(TZ)
     g.now = sydney_time()
+
+    # handle sort argments
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
         if sort['field'] is not None: return redirect('/documents')
@@ -97,6 +100,7 @@ def documents():
     sort['reverse'] = sort['reverse'] == ''
     sort_key = (lambda field: lambda pair: pair[1].get(field) or '')(sort['field'])
     metadata = sorted(load_metadata().items(), key=sort_key, reverse=sort['reverse'])
+
     user = get_user_name()
     return render_template('documents.html', metadata=metadata, user=user, sort=sort)
 
@@ -198,7 +202,9 @@ def delete(_hash):
         save_metadata(metadata)
         return f'Deleted hash {_hash}.', 200
     else:
-        return f'Can\'t delete hash {_hash}, it\'s published.', 400
+        audit('error', f"Can't delete hash {_hash}, it's published to {published_to}.")
+        flash(f"Can't delete hash {_hash}, it's published to {published_to}.", 'error')
+        return f"Can't delete hash {_hash}."
 
 # Add a new document to the database.
 

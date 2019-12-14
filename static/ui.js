@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', function () { 
 
+  const flashes = document.getElementById('flashes')
+  if (flashes) {
+    flashes.style.opacity = 1
+    setTimeout(() => { flashes.style.opacity = 0 }, 3000)
+  }
+
   // #highlight is an absolutely-positioned div with partial opacity
   // which covers the entire viewport and is not displayed by default. These
   // functions can be used to 'highlight' the viewport, to indicate that it is
