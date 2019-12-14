@@ -1,26 +1,12 @@
+/* Generic element rules */
+
 * { margin: 0; padding: 0; font-family: sans-serif }
+p, h2, table, form { margin-bottom: 1em }
+button { margin: 0.2em }
+code { font-family: monospace }
+.emoji { font-size: 2em; margin: 0 0.2em -0.1em 0 }
 
-nav#menu {
-  display: flex; align-items: top; height: 3em;
-  border-bottom: 1px #e1d1f0 solid
-}
-
-nav#submenu { display: flex; height: 3em; margin-bottom: -3em }
-nav#submenu a { font-weight: normal; border-bottom: 1px #e1d1f0 solid }
-nav#submenu a:first-child { margin-left: auto; border-left: 1px #e1d1f0 solid }
-
-section { margin: 2em 3em }
-section #drag-drop-overlay {
-  position: absolute; top: 0; left: 0; padding-top: 20%;
-  text-align: center; font-size: 3em; color: white;
-  background: #3a0870; z-index: -1; opacity: 0;
-}
-section #drag-drop-overlay.active { z-index: 1; opacity: 0.8 }
-
-footer {
-  padding: 1em; border-top: 1px #e1d1f0 solid;
-  font-size: 0.7em; text-align: right
-}
+/* Top-level navigation */
 
 nav h1 { margin-right: auto }
 nav a { height: 100%; padding: 0 1em; display: flex; align-items: center }
@@ -28,13 +14,18 @@ nav a:hover { background: #e1d1f0 }
 nav a.current, nav a.current:visited { background: #3a0870; color: white }
 nav a, nav a:visited { color: #3a0870; font-weight: bold; text-decoration: none }
 
-p, h2, table, form { margin-bottom: 1em }
+#menu {
+  display: flex; align-items: top; height: 3em;
+  border-bottom: 1px #e1d1f0 solid
+}
 
-section > nav { display: flex; margin-bottom: 1em }
-section > nav .query { flex: 1 }
-section > nav .filter { display: flex; align-items: center }
-section > nav .filter input { height: 1.2em }
-section > nav .filter .emoji { font-size: 1.5em }
+#submenu { display: flex; height: 3em; margin-bottom: -3em }
+#submenu a { font-weight: normal; border-bottom: 1px #e1d1f0 solid }
+#submenu a:first-child { margin-left: auto; border-left: 1px #e1d1f0 solid }
+
+section { margin: 2em 3em }
+
+/* Flashes */
 
 section #flashes {
   position: fixed; left: 0; right: 0; top: 2em; text-align: center;
@@ -45,8 +36,13 @@ section #flashes li.info { background: #bbe6b8 }
 section #flashes li.warning { background: #ffedbd }
 section #flashes li.error { background: #ffc2c2 }
 
-table#documents { width: 100% }
-table#documents td, table#documents th { height: 3em }
+/* General table formatting */
+
+section > nav { display: flex; margin-bottom: 1em }
+section > nav .query { flex: 1 }
+section > nav .filter { display: flex; align-items: center }
+section > nav .filter input { height: 1.2em }
+section > nav .filter .emoji { font-size: 1.5em }
 
 section table { padding: 1em; border-collapse: collapse }
 section table td, section table th { border: 1px #ccc solid; padding: 0.5em; max-width: 40em }
@@ -80,24 +76,28 @@ section table .tooltip .tip {
   position: absolute; top: 0; left: 100%
 }
 
-section table .added { text-align: center }
+/* Documents page */
 
-section table .matrix { width: 5em; padding: 0; font-size: 0.8em; text-align: center; cursor: pointer }
-section table .matrix:hover { background: #e1d1f0 }
-section table .matrix:hover::after { content: 'publish?' }
-section table .matrix.published { background: #3a0870; color: white }
-section table .matrix.published:hover { background: #de7a00 }
-section table .matrix.published:hover::after { content: 'recall?' }
-section table .matrix.delete:hover { background: #900000; color: white }
-section table .matrix.delete:hover::after { content: '✖'; font-size: 2em }
+#documents table { width: 100% }
+#documents td, #documents th { height: 3em }
+#documents #drag-drop-overlay {
+  position: absolute; top: 0; left: 0; padding-top: 20%;
+  text-align: center; font-size: 3em; color: white;
+  background: #3a0870; z-index: -1; opacity: 0;
+}
+#documents #drag-drop-overlay.active { z-index: 1; opacity: 0.8 }
 
-footer table { margin-left: auto }
-footer table td { text-align: left; padding-left: 0.2em }
-
-button { margin: 0.2em }
-code { font-family: monospace }
-
-.emoji { font-size: 2em; margin: 0 0.2em -0.1em 0 }
+#documents .matrix {
+  width: 5em; padding: 0;
+  font-size: 0.8em; text-align: center; cursor: pointer
+}
+#documents .matrix:hover { background: #e1d1f0 }
+#documents .matrix:hover::after { content: 'publish?' }
+#documents .matrix.published { background: #3a0870; color: white }
+#documents .matrix.published:hover { background: #de7a00 }
+#documents .matrix.published:hover::after { content: 'recall?' }
+#documents .matrix.delete:hover { background: #900000; color: white }
+#documents .matrix.delete:hover::after { content: '✖'; font-size: 2em }
 
 #highlight { 
   position: absolute; z-index: -1; opacity: 0;
@@ -106,3 +106,21 @@ code { font-family: monospace }
 #highlight.active { opacity: 0.5; z-index: 0 }
 
 .progress { width: 0; background: #087316; height: 1em }
+
+/* Log page rules */
+
+
+
+/* Settings page rules */
+
+
+
+/* Footer */
+
+footer {
+  padding: 1em; border-top: 1px #e1d1f0 solid;
+  font-size: 0.7em; text-align: right
+}
+
+footer table { margin-left: auto }
+footer table td { text-align: left; padding-left: 0.2em }

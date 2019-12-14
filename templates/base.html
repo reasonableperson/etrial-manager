@@ -24,7 +24,7 @@
   {% block submenu %}
   {% endblock %}
 
-  <section>
+  <section id="{{ request.path[1:] }}">
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <ul id="flashes">
