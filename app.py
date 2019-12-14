@@ -191,11 +191,11 @@ def delete(_hash):
     user = get_user_name()
     published_to = metadata[_hash].get('published')
     if published_to is None or published_to == []:
-        del metadata[_hash]
         msg = log_flash({
-            'message': f'Deleted {metadata[_hash].get("title")}.',
+            'message': f'Deleting {metadata[_hash].get("title")}.',
             'action': 'delete', 'hash': _hash
-        })
+        }, logging.WARNING)
+        del metadata[_hash]
         save_metadata(metadata)
         return json.dumps(msg), 200
     else:
