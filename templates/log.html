@@ -24,10 +24,10 @@
   </tr></thead>
   <tbody>
     {% for l in log %}<tr>
-      {% set timestamp = l.timestamp | strptime %}
-      <td class="date">{{ timestamp | strfdate_long }}</td>
-      <td class="time">{{ timestamp | strftime_long }}
-        <span class="tz">{{ timestamp | strftz }}</span></td>
+      {% set dt = l.timestamp | parse | localise %}
+      <td class="date">{{ dt | long_date }}</td>
+      <td class="time">{{ dt | long_time }}
+        <span class="tz">{{ dt | tz }}</span></td>
       <td>{{ l.extra.user if l.extra.user else l.ip if l.ip }}</td>
       <td>{{ l.app }}</td>
       <td>{{ l.extra.action if l.extra.action else l.http_status if l.http_status }}</td>

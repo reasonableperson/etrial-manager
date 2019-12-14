@@ -41,20 +41,21 @@
   <footer>
     <table>
       <tr>
-        <th>Current time</th>
-        <td>{{ g.now }}</td>
+        <th>Date</th>
+        <td>{{ now | localise | long_date }}</td>
+      </tr>
+      <tr>
+        <th>Time</th>
+        <td>{{ now | localise | long_time }} {{ now | localise | tz }}
+            ({{ now | long_time }} {{ now | tz }})</td>
       </tr>
       <tr>
         <th>User</th>
         <td>{{ user }}</td>
       </tr>
       <tr>
-        <th>Secure volume status</th>
-        <td>Decrypted at some date or time</td>
-      </tr>
-      <tr>
-        <th>Backup status</th>
-        <td>Replicated to somewhere at some date or time</td>
+        <th>Secure volume</th>
+        <td>{{ secure_path }}</td>
       </tr>
     </table>
   </footer>
