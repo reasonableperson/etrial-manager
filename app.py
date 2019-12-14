@@ -200,7 +200,7 @@ def delete(_hash):
         return json.dumps(msg), 200
     else:
         msg = log_flash({
-            'message': f"Can't delete hash {_hash}, it's published to {published_to}.",
+            'message': f"Can't delete {metadata[_hash].get('title')}, it's published to {published_to}.",
             'action': 'delete', 'hash': _hash
         }, level=logging.ERROR)
         return json.dumps(msg), 400
