@@ -69,12 +69,20 @@ def get_user_name():
                 if cert == fd.read():
                     return c.replace('.crt', '')
 
-def audit(action, other_data):
-    if type(other_data) != dict: other_data = {'msg': other_data}
-    data = { 'user': get_user_name(),
-             'action': action }
-    data.update(other_data)
-    logging.info(json.dumps(data))
+# Send the user a message which is also recorded in the log in JSON format.
+
+def log_silent(msg, level=logging.INFO):
+    if type(msg) != dict: msg = {'message': msg}
+    logging.log(level, json.dumps(msg))
+    return msg
+
+def log_flash(msg, level=logging.INFO):
+    flash(log_silent(msg, level), {
+        logging.INFO: 'info',
+        logging.WARNING: 'warning',
+        logging.ERROR: 'error',
+    }[level])
+    return msg
 
 # Now it's time to define some routes. The home page is just a list of all the
 # documents available.
@@ -174,20 +182,6 @@ def create_limited_user():
     else:
         return 'ok'
 
-# Given the hash of a document, try to guess what the user would like to name
-# it and assign an identifier automatically.
-
-@app.route('/identify/<_hash>/<prefix>', methods=['POST'])
-def identify(_hash, prefix):
-    metadata = load_metadata()
-    user = get_user_name()
-    audit('identify', {'hash': _hash, 'prefix': prefix})
-    #existing_identifiers = [d.replace(prefix, '') for d in metadata.values() if d.get('id') is not None and d.get('id')[:len(prefix)] == prefix]
-    #logging.info('existing ids:', existing_identifiers)
-    #metadata[_hash].update({ 'identifier': f'{prefix} 1' })
-    #save_metadata(metadata)
-    return 'ok'
-
 # Delete a document from the database. This should be stuck behind a
 # confirmation, as it implies recalling the document from the SFTP share.
 
@@ -198,13 +192,18 @@ def delete(_hash):
     published_to = metadata[_hash].get('published')
     if published_to is None or published_to == []:
         del metadata[_hash]
-        audit('delete', {'hash': _hash})
+        msg = log_flash({
+            'message': f'Deleted {metadata[_hash].get("title")}.',
+            'action': 'delete', 'hash': _hash
+        })
         save_metadata(metadata)
-        return f'Deleted hash {_hash}.', 200
+        return json.dumps(msg), 200
     else:
-        audit('error', f"Can't delete hash {_hash}, it's published to {published_to}.")
-        flash(f"Can't delete hash {_hash}, it's published to {published_to}.", 'error')
-        return f"Can't delete hash {_hash}."
+        msg = log_flash({
+            'message': f"Can't delete hash {_hash}, it's published to {published_to}.",
+            'action': 'delete', 'hash': _hash
+        }, level=logging.ERROR)
+        return json.dumps(msg), 400
 
 # Add a new document to the database.
 
@@ -213,7 +212,6 @@ def upload():
     metadata = load_metadata()
     user = get_user_name()
     title = request.args.get('filename')
-    audit('upload', {'title': title, 'size_mb': len(request.data)/10**6})
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
@@ -221,7 +219,12 @@ def upload():
         fd.write(request.data)
     metadata[_hash] = { 'title': title, 'added': datetime.datetime.now(TZ) }
     save_metadata(metadata)
-    return 'Thanks.'
+    msg = log_flash({
+        'message': f'Uploaded {title}.',
+        'action': 'upload', 'title': title, 'hash': _hash,
+        'size_mb': len(request.data)/10**6
+    })
+    return msg, 200
 
 def refresh_hardlinks(metadata, user_group):
     user_dir = f'/jails/{user_group}/etrial'
@@ -233,11 +236,11 @@ def refresh_hardlinks(metadata, user_group):
             if meta['title'] not in existing_hardlinks:
                 # These documents have been newly published
                 os.link(source, destination)
-                audit('link', {'source': source, 'destination': destination})
+                log_silent({'action': 'link', 'source': source, 'destination': destination})
         # These documents have been newly recalled
         elif meta['title'] in existing_hardlinks:
             os.remove(destination)
-            audit('unlink', {'destination': destination})
+            log_silent({'action': 'unlink', 'destination': destination})
 
 # Publish a document to the specified user group.
 
@@ -245,19 +248,27 @@ def refresh_hardlinks(metadata, user_group):
 def publish(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
-    audit('publish', {'hash': _hash, 'title': doc['title'], 'user_group': user_group})
+    msg = log_flash({
+        'message': f'Published {doc["title"]} to {user_group}.',
+        'action': 'publish', 'hash': _hash, 'title': doc['title'],
+        'user_group': user_group
+    })
     if 'published' not in metadata[_hash]: metadata[_hash]['published'] = []
     metadata[_hash]['published'].append(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
-    return 'yo'
+    return msg, 200
 
 @app.route('/recall/<_hash>/<user_group>', methods=['POST'])
 def recall(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
-    audit('recall', {'hash': _hash, 'title': doc['title'], 'user_group': user_group})
+    msg = log_flash({
+        'message': f'Recalled {doc["title"]} from {user_group}.',
+        'action': 'recall', 'hash': _hash, 'title': doc['title'],
+        'user_group': user_group
+    }, logging.WARNING)
     metadata[_hash]['published'].remove(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
-    return 'yo'
+    return msg, 200
