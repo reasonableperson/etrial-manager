@@ -13,6 +13,27 @@
 
 {% block content %}
 
+<h2>Users</h2>
+
+<table id="users">
+  <tr>
+    <th>User</th>
+    <th>Group</th>
+    <th>Created</th>
+    <th>Last login</th>
+    <th>Delete</th>
+  </tr>
+  {% for key in keys %}
+  <tr>
+    <td>{{ key }}</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td><button class="delete">Delete</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
 <h2>Matter details</h2>
 
 <form action="/admin/create/admin-user" method="post">
@@ -20,45 +41,8 @@
   <button type="submit">Save</button>
 </form>
 
-<h2>Secure filesystem</h2>
+<h2>Filesystem</h2>
 
-<p>The system was decrypted at (time) by (user).</p>
-
-<h2>Users</h2>
-
-<h3>Create new admin user</h3>
-<form action="/admin/create/admin-user" method="post">
-  <input name="name" placeholder="Enter user's full name ...">
-  <button type="submit">Create new administrative user</button>
-</form>
-
-<h2>Limited users</h2>
-
-<p>These users are able to access their group's publication folder over SSH.
-They cannot access any other group's publication folder or modify any files.
-Generally, an administrative user would assist them to configure an iOS device
-running PDF Expert or similar software to connect to the publication folder
-using the SSH key.</p>
-
-<table id="limited-users">
-  <tr>
-    <th>User</th>
-    <th>Group</th>
-    <th>Delete</th>
-  </tr>
-  {% for key in keys %}
-  <tr>
-    <td>{{ key }}</td>
-    <td>Jury</td>
-    <td><button class="delete">Delete</button></td>
-  </tr>
-  {% endfor %}
-</table>
-
-<h3>Create new limited user</h3>
-<form action="/admin/create/limited-user" method="post">
-  <input name="name" placeholder="Enter user's full name ...">
-  <button type="submit">Create new administrative user</button>
-</form>
+<p>{{ secure }} was decrypted at (time) by (user).</p>
 
 {% endblock %}
