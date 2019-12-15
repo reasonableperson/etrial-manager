@@ -2,6 +2,20 @@
 {% block title %}Encrypted{% endblock %}
 {% block content %}
 
-<p>This shit is encrypted, yo.</p>
+{% if key %}
+<h2>Welcome</h2>
+<p>A new encrypted volume has been set up using the following decryption key:</p>
+<code>{{ key }}</code>
+<p>Write this down, and then refresh this page to continue.
+{% else %}
+<h2>Encrypted</h2>
+<p>The trial data on this server is encrypted at rest and the decryption key
+has not been provided since this device started. You must enter the key to
+continue.<p>
+<form id="decrypt" action="/decrypt" method="POST">
+  <input name="key" placeholder="Enter decryption key ...">
+  <input type="submit" value="Submit">
+</form>
+{% endif %}
 
 {% endblock %}

@@ -9,7 +9,7 @@
     <h1>
       <a href="/">e-trial manager</a>
     </h1>
-    {% if decrypted %}
+    {% if not request.path == "/encrypted" %}
     <a href="/documents"{% if request.path == "/documents" %} class="current"{% endif %}>
       <div class="emoji">📖</div>
       <div class="text">Documents</div>
@@ -48,16 +48,15 @@
       </tr>
       <tr>
         <th>Time</th>
-        <td>{{ now | localise | long_time }} {{ now | localise | tz }}
-            ({{ now | long_time }} {{ now | tz }})</td>
+        <td>{{ now | localise | long_time }} {{ now | localise | tz }}</td>
+      </tr>
+      <tr>
+        <th>UTC</th>
+        <td>{{ now | long_time }} {{ now | tz }}</td>
       </tr>
       <tr>
         <th>User</th>
         <td>{{ user }}</td>
-      </tr>
-      <tr>
-        <th>Secure volume</th>
-        <td>{{ secure_path }}</td>
       </tr>
     </table>
   </footer>

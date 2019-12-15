@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import subprocess
 import urllib
 
@@ -26,17 +27,13 @@ logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 
 # Filesystem
 
-def shell(script_args):
-    return subprocess.run(script_args, capture_output=True).stdout.decode('utf-8')
-
-def cryptfs_create():
-    return shell(['/var/lib/etrial/scripts/create-gocryptfs.sh'])
-
-def cryptfs_mount():
-    pass
-
-def cryptfs_delete():
-    pass
+def shell(script_args, input=None, check=True):
+    try:
+        return subprocess.run(script_args, capture_output=True,
+            check=check, input=input, encoding='utf-8').stdout
+    except subprocess.CalledProcessError as e:
+        log_silent(e.output)
+        raise
 
 def load_metadata(metadata_file=METADATA_FILE):
     with open(metadata_file) as fd:
@@ -50,10 +47,10 @@ def refresh_hardlinks(metadata, user_group):
     """ For each file in the metadata object, check whether it has been newly
         published or recalled, and add or remove hardlinks in the SFTP chroots
         accordingly. """
-    user_dir = f'/jails/{user_group}/etrial'
+    user_dir = f'/crypt/{user_group}/etrial'
     existing_hardlinks = os.listdir(user_dir)
     for _hash, meta in metadata.items():
-        source = os.path.join(FILES_DIR, _hash)
+        source = os.path.join(CRYPT_ROOT, 'store', _hash)
         destination = os.path.join(user_dir, meta['title'])
         if 'published' in meta and user_group in meta['published']:
             if meta['title'] not in existing_hardlinks:
@@ -70,7 +67,7 @@ def refresh_hardlinks(metadata, user_group):
 def get_user():
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
-    return dn
+    return re.search('CN=([^,]*),', dn).group(1)
 
 # Logging
 
@@ -91,11 +88,38 @@ def log_flash(msg, level=logging.INFO):
 # Pages
 
 @app.route('/')
-def redirect_home():
-    return render_template('encrypted.html')
+def home():
+    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
+    return redirect('/documents')
+
+@app.route('/encrypted')
+def encrypted():
+    if os.path.exists('/home/etrial/crypt'):
+        return render_template('encrypted.html')
+    else:
+        log_silent('Creating new encrypted volume.')
+        stdout = shell(['/var/lib/etrial/scripts/create-gocryptfs.sh', 'purge'])
+        key = stdout.split('\n')[0]
+        return render_template('encrypted.html', key=key)
+
+@app.route('/decrypt', methods=['POST'])
+def cmd_settings_decrypt():
+    stdout = shell(['gocryptfs', '-passfile', '/dev/stdin', '/home/etrial/crypt', '/crypt'],
+        input=request.args.get('key'), check=False)
+    log_silent(stdout)
+    if not os.path.exists(os.path.join(CRYPT_ROOT, 'store')):
+        os.mkdir(os.path.join(CRYPT_ROOT, 'store'))
+    if os.path.exists(os.path.join(CRYPT_ROOT, 'store')):
+        log_flash('Decrypted filesystem.')
+        save_metadata({})
+        return redirect('/documents')
+    else:
+        log_flash('Failed to decrypt filesystem.', 'error')
+        return redirect('/encrypted')
 
 @app.route('/documents')
 def page_documents():
+    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     # handle sort argments
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
@@ -110,35 +134,39 @@ def page_documents():
 
 @app.route('/log')
 def page_log():
+    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
     user = get_user()
 
-    script = [os.path.join(SCRIPT_DIR, 'filtered-journal.sh')]
+    script = [os.path.join(CODE_ROOT, 'scripts', 'filtered-journal.sh')]
     stdout = shell(script)
     _json = [json.loads(l) for l in stdout.split('\n') if l != '']
 
     if not request.args.get('reverse') == '': _json.reverse()
 
-    return render_template('log.html', log=_json)
+    return render_template('log.html', metadata=metadata, log=_json)
 
 @app.route('/settings')
 def page_settings():
-    metadata = load_metadata()
-    user = get_user()
-    keys = os.listdir(CLIENT_CERT_DIR)
-    return render_template('settings.html', keys=keys)
+    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
+    users = None
+    df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
+    crypt_used = int(shell(['du', '-bs', '/crypt']).split()[0])
+    fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
+    return render_template('settings.html', users=users, fsdata=fsdata)
 
 # Document commands
 
 @app.route('/upload', methods=['POST'])
 def cmd_documents_upload():
+    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
     user = get_user()
     title = request.args.get('filename')
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
-    with open(os.path.join(ADMIN_DIR, 'files', _hash), 'wb') as fd:
+    with open(os.path.join(CRYPT_ROOT, 'store', _hash), 'wb') as fd:
         fd.write(request.data)
     metadata[_hash] = {
         'title': title, 'added': datetime.datetime.now(dateutil.tz.tzutc())
@@ -208,18 +236,6 @@ def cmd_settings_tls_cert_create():
 
 @app.route('/settings/ssh/create', methods=['POST'])
 def cmd_settings_ssh_key_create():
-    pass
-
-@app.route('/settings/cryptfs/create', methods=['POST'])
-def cmd_settings_cryptfs_create():
-    pass
-
-@app.route('/settings/cryptfs/mount', methods=['POST'])
-def cmd_settings_cryptfs_mount():
-    pass
-
-@app.route('/settings/cryptfs/delete', methods=['POST'])
-def cmd_settings_cryptfs_delete():
     pass
 
 # Template utilities

@@ -9,5 +9,5 @@ AllowTcpForwarding no
 X11Forwarding no
 
 Subsystem sftp internal-sftp -l INFO
-ChrootDirectory /jails/%u
+ChrootDirectory /crypt/%u
 ForceCommand internal-sftp -l INFO

@@ -76,15 +76,21 @@ section table .tooltip .tip {
   position: absolute; top: 0; left: 100%
 }
 
+/* Encrypted page */
+
+#encrypted code { display: block; font-size: 200%; margin-bottom: 0.5em }
+
 /* Documents page */
 
+#documents { position: relative }
 #documents table { width: 100% }
 #documents td, #documents th { height: 3em }
 #documents #drag-drop-overlay {
-  position: absolute; top: 0; left: 0; padding-top: 20%;
-  text-align: center; font-size: 3em; color: white;
-  background: #3a0870; z-index: -1; opacity: 0;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  text-align: center; font-size: 200%; color: white;
+  background: #3a0870; z-index: -1; opacity: 0
 }
+#documents #drag-drop-overlay p { margin-top: 2em }
 #documents #drag-drop-overlay.active { z-index: 1; opacity: 0.8 }
 
 #documents .matrix {
@@ -98,12 +104,6 @@ section table .tooltip .tip {
 #documents .matrix.published:hover::after { content: 'recall?' }
 #documents .matrix.delete:hover { background: #900000; color: white }
 #documents .matrix.delete:hover::after { content: '✖'; font-size: 2em }
-
-#highlight { 
-  position: absolute; z-index: -1; opacity: 0;
-  background: white; width: 100%; height: 100%
-}
-#highlight.active { opacity: 0.5; z-index: 0 }
 
 .progress { width: 0; background: #087316; height: 1em }
 

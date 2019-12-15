@@ -1,16 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Admin{% endblock %}
 
-{% block submenu %}
-<nav id="submenu">
-  <a href="#matter">Matter</a>
-  <a href="#encryption">Encryption</a>
-  <a href="#users">Users</a>
-  <a href="#backups">Backups</a>
-  <a href="#backups">Help</a>
-</nav>
-{% endblock %}
-
 {% block content %}
 
 <h2>Users</h2>
@@ -34,15 +24,21 @@
   {% endfor %}
 </table>
 
-<h2>Matter details</h2>
-
-<form action="/admin/create/admin-user" method="post">
-  <input name="name" placeholder="Set matter name ...">
-  <button type="submit">Save</button>
-</form>
-
 <h2>Filesystem</h2>
 
-<p>{{ secure }} was decrypted at (time) by (user).</p>
+<table>
+  <tr>
+    <th>Total storage</th>
+    <td>{{ (fsdata.total / 2**30) | round }} GiB</td>
+  </tr><tr>
+    <th>Used storage (total)</th>
+    <td>{{ (fsdata.used / 2**30) | round }} GiB
+      ({{ (fsdata.used / fsdata.total * 100) | round }}%)</td>
+  </tr><tr>
+    <th>Used storage (case data)</th>
+    <td>{{ (fsdata.crypt_used / 2**20) | round }} MB
+      ({{ (fsdata.crypt_used / fsdata.total * 100) | round }}%)</td>
+  </tr>
+</table>
 
 {% endblock %}

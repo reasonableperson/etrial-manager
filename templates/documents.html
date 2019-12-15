@@ -2,7 +2,7 @@
 {% block title %}Documents{% endblock %}
 {% block content %}
 
-<div id="drag-drop-overlay">Drop documents here to upload ...</div>
+<div id="drag-drop-overlay"><p>Drop documents here to upload ...</p></div>
 
 <nav>
 <div class="query">Showing <select>
@@ -58,9 +58,9 @@
         <button class="edit">✏️</button>
       </td>
       <td class="added">
-        <span class="date">{{ meta.added | strfdate }}</span><br>
-        <span class="time">{{ meta.added | strftime }}</span>
-        <span class="tz">{{ meta.added | strftz }}</span>
+        <span class="date">{{ meta.added | long_date }}</span><br>
+        <span class="time">{{ meta.added | long_time }}</span>
+        <span class="tz">{{ meta.added | tz }}</span>
       </td>
       <td class="matrix {% if 'judge' in meta.published %}published{% endif %}"
         data-hash="{{hash}}" data-user-group="judge"></td>
@@ -71,6 +71,12 @@
       <td class="matrix delete" data-hash="{{hash}}"></td>
     </tr>
   {% endfor %}
+  {% if not metadata %}
+  <tr id="placeholder-row"><td colspan="9">
+    You haven't uploaded any documents yet. Drag and drop a document here to
+    upload it.
+  </td></tr>
+  {% endif %}
   </tbody>
 </table>
 
