@@ -1,0 +1,22 @@
+[Unit]
+Description=encrypted storage location
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStart=mkdir /crypt
+ExecStart=gocryptfs -passfile /tmp/crypt.key /home/etrial/crypt /crypt
+ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
+ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/jury/dev/journal
+ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/witness/dev/journal
+ExecStart=touch /crypt/documents.toml.txt
+ExecStart=touch /crypt/documents.users.txt
+ExecStart=chown root:etrial -R /crypt
+ExecStart=chmod 770 -R /crypt
+
+ExecStop=systemd-mount --unmount /crypt/judge/dev/journal
+ExecStop=systemd-mount --unmount /crypt/jury/dev/journal
+ExecStop=systemd-mount --unmount /crypt/witness/dev/journal
+ExecStop=fusermount -u /crypt
+ExecStop=rm -r /crypt
