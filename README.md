@@ -1,112 +1,92 @@
-TODO you can't publish documents, and you don't get an error message, when
-an SSH key hasn't been generated for that user group yet.
+# etrial-manager
 
-# Arch environment for cloud SMB host
+This repository contains a Flask application and a series of configuration
+files and shell scripts for configuring a companion nginx instance to proxy the
+application for authorised administrators, and an OpenSSH daemon which provides
+audited access to file shares configured using the Flask application over SFTP.
 
-This document describes a system for hosting a public-facing service that may
-have untrusted users from a secure host. It should minimise the risk that poor
-administration of the service exposes the host system, while costing less and
-delivering better performance than shitty $10/month cloud VMs.
+Collectively, these files constitute an open source framework for presenting
+information in the context of an electronic criminal trial. The framework has
+been designed to meet the transparency and security requirements of real
+court proceedings. The system can be deployed either in a container on an
+internet-connected host server running Arch Linux, or on a Raspberry Pi
+connected to a local wireless network in the courtroom itself.
 
-x86 and ARM are too different to make this a Raspberry Pi project. It may be
-better simply to deploy this on a laptop. But the techniques should be generally
-useful for the Raspberry Pi idea as well.
+# Container-based installation
 
-# Create a virtual server to run the etrial software
+First, create a a new directory on your host system and use `pacstrap` to
+install Arch Linux in it along with `etrial-manager`'s dependencies:
 
-On the host OS, create a filesystem that will host the base OS. This filesystem
-will be unencrypted and will need to get as far as booting our web application,
-allowing the user to supply the key to decrypt `/home`.
+    CONTAINER_ROOT=/var/lib/machines/etrial
+    mkdir -p $CONTAINER_ROOT
+    pacstrap -c $CONTAINER_ROOT base \
+      nginx gocryptfs gunicorn man openssh sshguard pwgen vim \
+      python-dateutil python-flask python-toml
 
-This command will create a `systemd-nspawn` container called `etrial`, with an
-unconfigured MACVLAN network interface, and a read-only binding for
-`/var/lib/etrial`. The `systemd-nspawn` `PrivateUsers=pick` option is used to
-enhance security.
+Now, create a drop-in folder for the `systemd-nspawn` template unit (this
+should already be installed if you use a recent version of `systemd`). Put
+`config/nspawn-etrial.service.conf` in there to give your container a MACVLAN
+interface, disable user namespacing, and give it access to the host OS's FUSE
+module. (We need to use a service, rather than just invoking the container
+directly with `systemd-nspawn` or `machinectl`, so that we can use the
+`DeviceAllow=` directive and ensure that the container starts up with the host.)
 
-For now, it also mounts `/home` for convenience but this needs to be replaced
-with an encrypted volume. The bound `/home` directory must be owned by the
-container's root user: `chown vu-etrial-0:vg-etrial-0 /home/scott/work/etrial-demo`.
-
-    mkdir /var/lib/machines/etrial
-    cp config/etrial.nspawn /etc/systemd/nspawn
-
-Bootstrap the OS:
-
-    pacstrap -c /var/lib/machines/etrial base \
-      nginx gunicorn python-dateutil python-flask python-toml python-pytz \
-      openssh sshguard \
-      exa git vim
+    HOST_SYSTEMD_DIR=/etc/systemd
+    REPO_DIR=~scott/git/etrial
+    mkdir -p $HOST_SYSTEMD_DIR/system/systemd-nspawn@etrial.service.d
+    ln -s $REPO_DIR/config/nspawn-etrial.service.conf \
+      $HOST_SYSTEMD_DIR/system/systemd-nspawn@etrial.service.d
 
 Configure the container's network interface with the custom MAC address
-`4a:f0:e5:e2:be:ef`, and configure it to ask your local DHCP server for an IP:
+`4a:f0:e5:e2:be:ef`, and configure it to ask your local DHCP server for an IP
+and DNS resolver:
 
-    cp config/mv-eno1.network /var/lib/machines/etrial/etc/systemd/network
-    ln -s /var/lib/machines/etrial/usr/lib/systemd/system/systemd-networkd.service \
-      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+    cp $REPO_DIR/config/mv-eno1.network $CONTAINER_ROOT/etc/systemd/network
+    ln -s /usr/lib/systemd/system/systemd-networkd.service \
+      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
     ln -s /usr/lib/systemd/system/systemd-resolved.service \
-      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
+      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
 
-Copy sshd config and enable sshd service:
+Configure the container's sshd config to disable almost everything, listen on
+a custom port, and lock SFTP users into a chroot jail:
 
-    cp config/sshd_config /var/lib/machines/etrial/etc/ssh
+    cp $REPO_DIR/config/sshd_config $CONTAINER_ROOT/etc/ssh
     ln -s /usr/lib/systemd/system/sshd.service \
-      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/sshd.service
-
-Copy and generate nginx config:
-
-    scripts/create-ca.sh
-    cp config/nginx.conf /var/lib/machines/etrial/etc/nginx
-    cp /etc/letsencrypt/live/sjy.id.au/privkey.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.key
-    cp /etc/letsencrypt/live/sjy.id.au/cert.pem /var/lib/machines/etrial/etc/nginx/sjy.id.au.crt
+      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/sshd.service
 
 Install and enable the gunicorn service:
 
-    cp config/gunicorn.service /var/lib/machines/etrial/etc/systemd/system
-    ln -s /var/lib/machines/etrial/etc/systemd/system/gunicorn.service \
-      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/gunicorn.service
+    cp $REPO_DIR/config/gunicorn.service /var/lib/machines/etrial/etc/systemd/system
+    ln -s /etc/systemd/system/gunicorn.service \
+      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/gunicorn.service
 
-Allow a 'backdoor' login from the host using `machinectl login`, so that you
-can get an HTTPS certificate later:
+Configure nginx, locking it down to users with a valid client certificate only,
+and generate a certificate bundle to bootstrap your access to the web interface:
+
+    $REPO_DIR/scripts/configure-nginx.sh \
+      /etc/letsencrypt/live/sjy.id.au/privkey.pem \
+      /etc/letsencrypt/live/sjy.id.au/cert.pem \
+      $CONTAINER_ROOT/etc/nginx
+
+Enable the container to ensure that it automatically starts on the next reboot,
+and start it immediately:
+
+    systemctl enable systemd-nspawn@etrial
+    systemctl start systemd-nspawn@etrial
+
+You should have a file in the current directory called `scott.crt` which can
+be imported into your browser to access the web interface which is now running
+on the IP address assigned to your container.
+
+You'll also have `client.key`, which is the CA key used to authorise new HTTP
+users. If you don't plan on adding any other administrators, simply delete it.
+Otherwise, once you've created an encrypted volume in the web app, upload
+`client.key` to enable this functionality. (It would be unsafe to leave this
+key on the cleartext filesystem we have set up so far.)
+
+## Troubleshooting
+
+If you want a shell on the container, run the following on the host:
 
     for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
-
-This should get you to a fully configured nginx instance which you can reach
-on port 443.
-
-    machinectl start etrial
-
-# Add HTTPS user
-
-Since you have root access on the host OS, you can get a root shell in the
-container and generate a client certificate for yourself that way:
-
-    machinectl login etrial
-
-Generate a new private key and certificate for the user, sign the certificate
-using the CA you generated earlier (the credentials were saved in
-`/etc/nginx/client.ca.key`), and produce a `.pfx` file in the current directory
-(`/root`). The script is interactive; you'll get a chance to set a passphrase
-if you intend to send the certificate bundle over an insecure channel.
-
-    /var/lib/etrial/scripts/add-https-user.sh "Scott Young"
-
-There is a handy script for creating a local copy of the certificate in
-`/home/scott/git/etrial` with normal permissions (ie. not owned by a container
-user).
-
-    scripts/pull-https-cert.sh
-
-# Creating SFTP users
-
-Now that you're in the web interface, you can generate an SSH key. This is
-required in order to publish to users holding that SSH key.
-
-This script will generate an SSH key for the specified class (judge, jury or
-witness), and create the required Unix account as well if it doesn't exist
-already. It uses RSA keys because compatibility with ed25519 is pretty poor
-among iOS apps.
-
-    /var/lib/etrial/scripts/add-ssh-user.sh test1 jury
-
-After running it, rather than downloading the key from the web interface you
-can fetch it using `scripts/pull-ssh-key.sh`.
+    machinectl shell root@etrial
