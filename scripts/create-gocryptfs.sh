@@ -6,7 +6,7 @@ if [[ $(</proc/sys/kernel/hostname) != "etrial" ]]; then
 fi
 
 key=$(pwgen -1 4 4)
-mkdir -p .secure secure
-gocryptfs -passfile <(echo $key) -init .secure
-gocryptfs -passfile <(echo $key) .secure secure
-
+echo $key
+mkdir -p ~etrial/crypt
+gocryptfs -passfile <(echo $key) -init ~etrial/crypt
+gocryptfs -passfile <(echo $key) ~etrial/crypt /crypt

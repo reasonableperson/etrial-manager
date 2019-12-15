@@ -14,30 +14,42 @@ from flask import Flask, flash, g, render_template, redirect, request
 
 # Configuration
 
-CODE_DIR = os.path.dirname(os.path.realpath(__file__))
-SCRIPT_DIR = os.path.join(CODE_DIR, 'scripts')
-ADMIN_DIR = '/home/etrial'
-FILES_DIR = '/home/etrial/files'
-CLIENT_CERT_DIR = '/home/etrial/https'
+CODE_ROOT = os.path.dirname(os.path.realpath(__file__))
+CRYPT_ROOT = '/crypt'
 
-METADATA_FILE = os.path.join(ADMIN_DIR, 'metadata.toml.txt')
-LOG_FILE = logging.FileHandler(os.path.join(ADMIN_DIR, 'etrial.log.txt'))
-logging.basicConfig(level=logging.INFO, handlers=[LOG_FILE, logging.StreamHandler()])
+METADATA_FILE = os.path.join(CRYPT_ROOT, 'documents.toml')
+USERS_FILE = os.path.join(CRYPT_ROOT, 'users.toml')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'_\xfd\xd9\xe53\x00\x8e\xbc\xa4\x14-\x97\x11\x0e&>'
+logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 
 # Filesystem
 
-def load_metadata():
-    with open(METADATA_FILE) as fd:
+def shell(script_args):
+    return subprocess.run(script_args, capture_output=True).stdout.decode('utf-8')
+
+def cryptfs_create():
+    return shell(['/var/lib/etrial/scripts/create-gocryptfs.sh'])
+
+def cryptfs_mount():
+    pass
+
+def cryptfs_delete():
+    pass
+
+def load_metadata(metadata_file=METADATA_FILE):
+    with open(metadata_file) as fd:
         return toml.load(fd)
 
-def save_metadata(md):
-    with open(METADATA_FILE, 'w') as fd:
-        return toml.dump(md, fd)
+def save_metadata(metadata, metadata_file=METADATA_FILE):
+    with open(metadata_file, 'w') as fd:
+        return toml.dump(metadata, fd)
 
 def refresh_hardlinks(metadata, user_group):
+    """ For each file in the metadata object, check whether it has been newly
+        published or recalled, and add or remove hardlinks in the SFTP chroots
+        accordingly. """
     user_dir = f'/jails/{user_group}/etrial'
     existing_hardlinks = os.listdir(user_dir)
     for _hash, meta in metadata.items():
@@ -53,22 +65,18 @@ def refresh_hardlinks(metadata, user_group):
             os.remove(destination)
             log_silent({'action': 'unlink', 'destination': destination})
 
-
 # Authentication
 
-def get_user_name():
-    cert = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Certificate'))
-    for c in os.listdir(CLIENT_CERT_DIR):
-        if c[-4:] == '.crt':
-            with open(os.path.join(CLIENT_CERT_DIR, c)) as fd:
-                if cert == fd.read():
-                    return c.replace('.crt', '')
+def get_user():
+    fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
+    dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
+    return dn
 
 # Logging
 
 def log_silent(msg, level=logging.INFO):
     if type(msg) != dict: msg = {'message': msg}
-    msg['user'] = get_user_name()
+    msg['user'] = get_user()
     logging.log(level, json.dumps(msg))
     return msg
 
@@ -84,11 +92,7 @@ def log_flash(msg, level=logging.INFO):
 
 @app.route('/')
 def redirect_home():
-    try:
-        load_metadata()
-        return redirect('/documents')
-    except:
-        return "Can't read metadata file. You need to decrypt the secure partition.", 500
+    return render_template('encrypted.html')
 
 @app.route('/documents')
 def page_documents():
@@ -101,16 +105,16 @@ def page_documents():
     sort_key = (lambda field: lambda pair: pair[1].get(field) or '')(sort['field'])
     metadata = sorted(load_metadata().items(), key=sort_key, reverse=sort['reverse'])
 
-    user = get_user_name()
+    user = get_user()
     return render_template('documents.html', metadata=metadata, user=user, sort=sort)
 
 @app.route('/log')
 def page_log():
     metadata = load_metadata()
-    user = get_user_name()
+    user = get_user()
 
     script = [os.path.join(SCRIPT_DIR, 'filtered-journal.sh')]
-    stdout = subprocess.run(script, capture_output=True).stdout.decode('utf-8')
+    stdout = shell(script)
     _json = [json.loads(l) for l in stdout.split('\n') if l != '']
 
     if not request.args.get('reverse') == '': _json.reverse()
@@ -120,7 +124,7 @@ def page_log():
 @app.route('/settings')
 def page_settings():
     metadata = load_metadata()
-    user = get_user_name()
+    user = get_user()
     keys = os.listdir(CLIENT_CERT_DIR)
     return render_template('settings.html', keys=keys)
 
@@ -129,7 +133,7 @@ def page_settings():
 @app.route('/upload', methods=['POST'])
 def cmd_documents_upload():
     metadata = load_metadata()
-    user = get_user_name()
+    user = get_user()
     title = request.args.get('filename')
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
@@ -179,7 +183,7 @@ def cmd_documents_recall(_hash, user_group):
 @app.route('/delete/<_hash>', methods=['POST'])
 def cmd_documents_delete(_hash):
     metadata = load_metadata()
-    user = get_user_name()
+    user = get_user()
     published_to = metadata[_hash].get('published')
     if published_to is None or published_to == []:
         msg = log_flash({
@@ -198,21 +202,33 @@ def cmd_documents_delete(_hash):
 
 # Settings commands
 
-@app.route('/settings/create/tls', methods=['POST'])
-def cmd_settings_create_tls_cert():
+@app.route('/settings/tls/create', methods=['POST'])
+def cmd_settings_tls_cert_create():
     pass
 
-@app.route('/settings/create/ssh', methods=['POST'])
-def cmd_settings_create_ssh_key():
+@app.route('/settings/ssh/create', methods=['POST'])
+def cmd_settings_ssh_key_create():
+    pass
+
+@app.route('/settings/cryptfs/create', methods=['POST'])
+def cmd_settings_cryptfs_create():
+    pass
+
+@app.route('/settings/cryptfs/mount', methods=['POST'])
+def cmd_settings_cryptfs_mount():
+    pass
+
+@app.route('/settings/cryptfs/delete', methods=['POST'])
+def cmd_settings_cryptfs_delete():
     pass
 
 # Template utilities
 
 @app.context_processor
-def t_inject_user(): return dict(user=get_user_name())
+def t_inject_user(): return dict(user=get_user())
 
 @app.context_processor
-def t_inject_secure_volume(): return dict(secure_path=FILES_DIR)
+def t_inject_crypt_root(): return dict(secure_path=CRYPT_ROOT)
 
 def now(): return datetime.datetime.now(dateutil.tz.tzutc())
 @app.context_processor

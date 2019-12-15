@@ -18,7 +18,7 @@ First, create a a new directory on your host system and use `pacstrap` to
 install Arch Linux in it along with `etrial-manager`'s dependencies:
 
     CONTAINER_ROOT=/var/lib/machines/etrial
-    mkdir -p $CONTAINER_ROOT
+    mkdir -p $CONTAINER_ROOT/crypt
     pacstrap -c $CONTAINER_ROOT base \
       nginx gocryptfs gunicorn man openssh sshguard pwgen vim \
       python-dateutil python-flask python-toml
