@@ -13,6 +13,7 @@ ExecStart=/usr/bin/gunicorn --user etrial --reload \
   --reload-extra-file templates/base.html  \
   --reload-extra-file templates/documents.html  \
   --reload-extra-file templates/encrypted.html  \
+  --reload-extra-file templates/macros.html  \
   --reload-extra-file templates/log.html  \
   --reload-extra-file templates/settings.html  \
   app:app

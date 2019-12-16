@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import matrix %}
 {% block title %}Documents{% endblock %}
 {% block content %}
 
@@ -62,13 +63,7 @@
         <span class="time">{{ meta.added | localise | long_time }}</span>
         <span class="tz">{{ meta.added | localise | tz }}</span>
       </td>
-      <td class="matrix {% if 'judge' in meta.published %}published{% endif %}"
-        data-hash="{{hash}}" data-user-group="judge"></td>
-      <td class="matrix jury {% if 'jury' in meta.published %}published{% endif %}"
-        data-hash="{{hash}}" data-user-group="jury"></td>
-      <td class="matrix witness {% if 'witness' in meta.published %}published{% endif %}"
-        data-hash="{{hash}}" data-user-group="witness"></td>
-      <td class="matrix delete" data-hash="{{hash}}"></td>
+      {{ matrix('published') }}
     </tr>
   {% endfor %}
   {% if not metadata %}

@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 import urllib
 
 import dateutil.parser
@@ -18,8 +19,8 @@ from flask import Flask, flash, g, render_template, redirect, request
 CODE_ROOT = os.path.dirname(os.path.realpath(__file__))
 CRYPT_ROOT = '/crypt'
 
-METADATA_FILE = os.path.join(CRYPT_ROOT, 'documents.toml')
-USERS_FILE = os.path.join(CRYPT_ROOT, 'users.toml')
+METADATA_FILE = os.path.join(CRYPT_ROOT, 'documents.toml.txt')
+USERS_FILE = os.path.join(CRYPT_ROOT, 'users.toml.txt')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'_\xfd\xd9\xe53\x00\x8e\xbc\xa4\x14-\x97\x11\x0e&>'
@@ -64,10 +65,18 @@ def refresh_hardlinks(metadata, user_group):
 
 # Authentication
 
-def get_user():
+def get_user(full_list=False):
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
-    return re.search('CN=([^,]*),', dn).group(1)
+    user = re.search('CN=([^,]*),', dn).group(1)
+    # if we haven't seen this user before, save their fingerprint
+    if os.path.exists(USERS_FILE):
+        users = load_metadata(metadata_file=USERS_FILE)
+        if user not in users:
+            users[user] = dict(fingerprint=fingerprint, added=now())
+        users[user]['seen'] = now()
+        save_metadata(users, metadata_file=USERS_FILE)
+    return users if full_list else user
 
 # Logging
 
@@ -88,12 +97,13 @@ def log_flash(msg, level=logging.INFO):
 # Pages
 
 @app.route('/')
-def home():
+def page_home():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     return redirect('/documents')
 
 @app.route('/encrypted')
-def encrypted():
+def page_encrypted():
+    if os.path.exists(METADATA_FILE): return redirect('/')
     if os.path.exists('/home/etrial/crypt'):
         return render_template('encrypted.html')
     else:
@@ -104,17 +114,16 @@ def encrypted():
 
 @app.route('/decrypt', methods=['POST'])
 def cmd_settings_decrypt():
-    stdout = shell(['gocryptfs', '-passfile', '/dev/stdin', '/home/etrial/crypt', '/crypt'],
-        input=request.args.get('key'), check=False)
-    log_silent(stdout)
-    if not os.path.exists(os.path.join(CRYPT_ROOT, 'store')):
-        os.mkdir(os.path.join(CRYPT_ROOT, 'store'))
-    if os.path.exists(os.path.join(CRYPT_ROOT, 'store')):
-        log_flash('Decrypted filesystem.')
-        save_metadata({})
+    if (os.path.exists(METADATA_FILE)):
+        return redirect('/')
+    try:
+        with open('/tmp/crypt.key', 'w') as fd:
+            fd.write(request.form['key'] + '\n')
+        time.sleep(0.5)
+        log_silent('Decrypted filesystem.')
         return redirect('/documents')
-    else:
-        log_flash('Failed to decrypt filesystem.', 'error')
+    except:
+        log_flash('Failed to decrypt filesystem.', logging.ERROR)
         return redirect('/encrypted')
 
 @app.route('/documents')
@@ -149,11 +158,10 @@ def page_log():
 @app.route('/settings')
 def page_settings():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
-    users = None
     df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
-    crypt_used = int(shell(['du', '-bs', '/crypt']).split()[0])
+    crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
-    return render_template('settings.html', users=users, fsdata=fsdata)
+    return render_template('settings.html', users=get_user(full_list=True), fsdata=fsdata)
 
 # Document commands
 
@@ -168,9 +176,7 @@ def cmd_documents_upload():
     _hash = h.hexdigest()
     with open(os.path.join(CRYPT_ROOT, 'store', _hash), 'wb') as fd:
         fd.write(request.data)
-    metadata[_hash] = {
-        'title': title, 'added': datetime.datetime.now(dateutil.tz.tzutc())
-    }
+    metadata[_hash] = dict(title=title, added=now())
     save_metadata(metadata)
     msg = log_flash({
         'message': f'Uploaded {title}.',

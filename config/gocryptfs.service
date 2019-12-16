@@ -14,12 +14,15 @@ ExecStartPre=chown root:etrial /crypt
 ExecStartPre=chmod 770 /crypt
 ExecStartPre=gocryptfs -passfile /tmp/crypt.key -allow_other /home/etrial/crypt /crypt
 ExecStart=touch /crypt/documents.toml.txt
-ExecStart=touch /crypt/documents.users.txt
-ExecStart=mkdir -p /crypt/judge /crypt/jury /crypt/witness
+ExecStart=touch /crypt/users.toml.txt
+ExecStart=mkdir -p /crypt/store /crypt/judge /crypt/jury /crypt/witness
 ExecStartPost=rm /tmp/crypt.key
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
+ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/judge/dev/log
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/jury/dev/journal
+ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/jury/dev/log
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/witness/dev/journal
+ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/witness/dev/log
 
 ExecStopPost=-systemd-umount /crypt/judge/dev/journal
 ExecStopPost=-systemd-umount /crypt/jury/dev/journal

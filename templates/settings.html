@@ -8,20 +8,38 @@
 <table id="users">
   <tr>
     <th>User</th>
-    <th>Group</th>
-    <th>Created</th>
-    <th>Last login</th>
+    <th>Added</th>
+    <th>Seen</th>
+    <th>Admin</th>
+    <th>Judge</th>
+    <th>Jury</th>
+    <th>Witness</th>
     <th>Delete</th>
   </tr>
-  {% for key in keys %}
+  {% for name, user in users.items() %}
   <tr>
-    <td>{{ key }}</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td><button class="delete">Delete</button></td>
+    <td>{{ name }}</td>
+    <td class="added">
+      <span class="date">{{ user.added | localise | long_date }}</span><br>
+      <span class="time">{{ user.added | localise | long_time }}</span>
+      <span class="tz">{{ user.added | localise | tz }}</span>
+    </td>
+    <td class="seen">
+      <span class="date">{{ user.seen | localise | long_date }}</span><br>
+      <span class="time">{{ user.seen | localise | long_time }}</span>
+      <span class="tz">{{ user.seen | localise | tz }}</span>
+    </td>
+    <td><button>Create admin certificate</button></td>
+    <td class="matrix judge"></td>
+    <td class="matrix jury"></td>
+    <td class="matrix witness"></td>
+    <td class="matrix delete"></td>
   </tr>
   {% endfor %}
+  <tr>
+    <td><input name="name" placeholder="Name"></td>
+    <td colspan="7"><button>Create new user</button></td>
+  </tr>
 </table>
 
 <h2>Filesystem</h2>
