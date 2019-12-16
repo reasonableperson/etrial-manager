@@ -60,16 +60,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Publish a document to the selected user group.
 
-  const publish = async (hash, user_group) => {
-    const response = await fetch(`/publish/${hash}/${user_group}`, { 'method': 'POST' })
+  const publish = async (hash, user_class) => {
+    const response = await fetch(`/publish/${hash}/${user_class}`, { 'method': 'POST' })
     console.log(response)
     window.location.reload()
   }
 
   // Recall a document from the selected user group.
 
-  const recall = async (hash, user_group) => {
-    const response = await fetch(`/recall/${hash}/${user_group}`, { 'method': 'POST' })
+  const recall = async (hash, user_class) => {
+    const response = await fetch(`/recall/${hash}/${user_class}`, { 'method': 'POST' })
     console.log(response)
     window.location.reload()
   }
@@ -80,21 +80,35 @@ document.addEventListener('DOMContentLoaded', function () {
     window.location.reload()
   }
 
+  const grantSftp = async (name) => {
+    const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
+    console.log(response)
+    window.location.reload()
+  }
 
-  const handleButtons = function (e) {
+  const denySftp = async (name) => {
+    const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
+    console.log(response)
+    window.location.reload()
+  }
+
+  const handleMatrix = function (e) {
     const d = e.target.dataset
 
     if (e.target.tagName == "TD") {
-      if (e.target.classList.contains("published")) {
-        console.log('recall', d.hash, d.userGroup)
-        console.log(recall(d.hash, d.userGroup))
-      } else if (e.target.classList.contains("delete")) {
-        console.log('delete', d.hash)
-        console.log(_delete(d.hash))
-      } else {
-        console.log('publish', d.hash, d.userGroup)
-        console.log(publish(d.hash, d.userGroup))
-      }
+      console.log(d.action, d.userClass, d.idKey, d.idValue)
+      if (d.action == 'delete')
+        _delete(d.idValue)
+      else if (d.action == 'publish' && e.target.classList.contains('active'))
+        recall(d.idValue, d.userClass)
+      else if (d.action == 'publish')
+        publish(d.idValue, d.userClass)
+      else if (d.action == 'sftp' && e.target.classList.contains('active'))
+        denySftp(d.idValue, d.userClass)
+      else if (d.action == 'sftp')
+        grantSftp(d.idValue, d.userClass)
+      else
+        console.error(d.action, 'not implemented')
     }
 
     if (e.target.tagName == "BUTTON") {
@@ -131,7 +145,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  maybeAttach('documents', 'click', handleButtons)
+  maybeAttach('documents', 'click', handleMatrix)
+  maybeAttach('settings', 'click', handleMatrix)
 
   if (document.getElementById('submenu')) {
     document.getElementById('submenu').addEventListener('click', (e) => {

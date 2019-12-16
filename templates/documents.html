@@ -63,7 +63,7 @@
         <span class="time">{{ meta.added | localise | long_time }}</span>
         <span class="tz">{{ meta.added | localise | tz }}</span>
       </td>
-      {{ matrix('published') }}
+      {{ matrix(meta, 'publish', 'hash', hash) }}
     </tr>
   {% endfor %}
   {% if not metadata %}

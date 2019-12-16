@@ -48,12 +48,12 @@ def refresh_hardlinks(metadata, user_group):
     """ For each file in the metadata object, check whether it has been newly
         published or recalled, and add or remove hardlinks in the SFTP chroots
         accordingly. """
-    user_dir = f'/crypt/{user_group}/etrial'
+    user_dir = f'/crypt/{user_group}/Documents'
     existing_hardlinks = os.listdir(user_dir)
     for _hash, meta in metadata.items():
         source = os.path.join(CRYPT_ROOT, 'store', _hash)
         destination = os.path.join(user_dir, meta['title'])
-        if 'published' in meta and user_group in meta['published']:
+        if 'publish' in meta and user_group in meta['publish']:
             if meta['title'] not in existing_hardlinks:
                 # These documents have been newly published
                 os.link(source, destination)
@@ -194,8 +194,8 @@ def cmd_documents_publish(_hash, user_group):
         'action': 'publish', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     })
-    if 'published' not in metadata[_hash]: metadata[_hash]['published'] = []
-    metadata[_hash]['published'].append(user_group)
+    if 'publish' not in metadata[_hash]: metadata[_hash]['publish'] = []
+    metadata[_hash]['publish'].append(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200
@@ -209,7 +209,7 @@ def cmd_documents_recall(_hash, user_group):
         'action': 'recall', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     }, logging.WARNING)
-    metadata[_hash]['published'].remove(user_group)
+    metadata[_hash]['publish'].remove(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200
@@ -218,10 +218,10 @@ def cmd_documents_recall(_hash, user_group):
 def cmd_documents_delete(_hash):
     metadata = load_metadata()
     user = get_user()
-    published_to = metadata[_hash].get('published')
+    published_to = metadata[_hash].get('publish')
     if published_to is None or published_to == []:
         msg = log_flash({
-            'message': f'Deleting {metadata[_hash].get("title")}.',
+            'message': f'Deleted {metadata[_hash].get("title")}.',
             'action': 'delete', 'hash': _hash
         }, logging.WARNING)
         del metadata[_hash]

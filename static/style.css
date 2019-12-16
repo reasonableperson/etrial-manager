@@ -93,17 +93,19 @@ section table .tooltip .tip {
 #documents #drag-drop-overlay p { margin-top: 2em }
 #documents #drag-drop-overlay.active { z-index: 1; opacity: 0.8 }
 
-#documents .matrix {
+section table .matrix {
   width: 5em; padding: 0;
   font-size: 0.8em; text-align: center; cursor: pointer
 }
-#documents .matrix:hover { background: #e1d1f0 }
-#documents .matrix:hover::after { content: 'publish?' }
-#documents .matrix.published { background: #3a0870; color: white }
-#documents .matrix.published:hover { background: #de7a00 }
-#documents .matrix.published:hover::after { content: 'recall?' }
-#documents .matrix.delete:hover { background: #900000; color: white }
-#documents .matrix.delete:hover::after { content: '✖'; font-size: 2em }
+section table .matrix:hover { background: #e1d1f0 }
+#documents table .matrix:hover::after { content: 'publish?' }
+#documents table .matrix.active:hover::after { content: 'recall?' }
+#settings table .matrix:hover::after { content: 'sftp read?' }
+section table .matrix.active { background: #3a0870; color: white }
+section table .matrix.active:hover { background: #de7a00 }
+section table .matrix.active:hover::after { content: 'recall?' }
+section table .matrix.delete:hover { background: #900000; color: white }
+section table .matrix.delete:hover::after { content: '✖' !important; font-size: 2em }
 
 .progress { width: 0; background: #087316; height: 1em }
 

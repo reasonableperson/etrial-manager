@@ -1,13 +1,21 @@
-{% macro matrix(meta, active_column, class_name, id_key, id_value) %}
-<td class="matrix judge{% if 'judge' in meta[active_column] %}
-    {{ class_name }}{% endif %}" data-user-class="judge"
-    data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
-<td class="matrix jury{% if 'jury' in meta[active_column] %}
-    {{ class_name }}{% endif %}" data-user-class="jury"
-    data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"</td>
-<td class="matrix witness{% if 'witness' in meta[active_column] %}
-    {{ class_name }}{% endif %}" data-user-class="witness"
-    data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"</td>
-<td class="matrix delete" data-user-class="delete"
-    data-id-key="{{ id_key }}" data-id-value="{{ id_value }}">
+{% macro matrix(meta, action, id_key, id_value) %}
+
+<td class="matrix judge
+  {% if 'judge' in meta[action] %} active{% endif %}"
+  data-action="{{action}}" data-user-class="judge"
+  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+
+<td class="matrix jury
+  {% if 'jury' in meta[action] %} active{% endif %}"
+  data-action="{{action}}" data-user-class="jury"
+  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+
+<td class="matrix witness {{ action }}
+  {% if 'witness' in meta[action] %} active{% endif %}"
+  data-action="{{action}}" data-current-state="" data-user-class="witness"
+  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+
+<td class="matrix delete" data-action="delete"
+  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+
 {% endmacro %}

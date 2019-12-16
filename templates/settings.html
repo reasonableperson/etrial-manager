@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import matrix %}
 {% block title %}Admin{% endblock %}
 
 {% block content %}
@@ -30,10 +31,7 @@
       <span class="tz">{{ user.seen | localise | tz }}</span>
     </td>
     <td><button>Create admin certificate</button></td>
-    <td class="matrix judge"></td>
-    <td class="matrix jury"></td>
-    <td class="matrix witness"></td>
-    <td class="matrix delete"></td>
+    {{ matrix(users, 'sftp', 'name', name) }}
   </tr>
   {% endfor %}
   <tr>
