@@ -41,7 +41,8 @@ Configure the container's network interface with the custom MAC address
 `4a:f0:e5:e2:be:ef`, and configure it to ask your local DHCP server for an IP
 and DNS resolver:
 
-    cp $REPO_DIR/config/mv-eno1.network $CONTAINER_ROOT/etc/systemd/network
+    ln -s /var/lib/etrial/config/macvlan.network \
+      $CONTAINER_ROOT/etc/systemd/network
     ln -s /usr/lib/systemd/system/systemd-networkd.service \
       $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
     ln -s /usr/lib/systemd/system/systemd-resolved.service \
@@ -50,13 +51,23 @@ and DNS resolver:
 Configure the container's sshd config to disable almost everything, listen on
 a custom port, and lock SFTP users into a chroot jail:
 
-    cp $REPO_DIR/config/sshd_config $CONTAINER_ROOT/etc/ssh
-    ln -s /usr/lib/systemd/system/sshd.service \
-      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/sshd.service
+    mkdir $CONTAINER_ROOT/etc/systemd/system/sshd.service.d
+    ln -s /var/lib/etrial/config/sshd.service.d.conf \
+      $CONTAINER_ROOT/etc/systemd/system/sshd.service.d/require-gocryptfs.conf
+
+Configure the encrypted filesystem service:
+
+    ln -s /var/lib/etrial/config/gocryptfs.path \
+      $CONTAINER_ROOT/etc/systemd/system/gocryptfs.path
+    ln -s /etc/systemd/system/gocryptfs.path \
+      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/gocryptfs.path
+    ln -s /var/lib/etrial/config/gocryptfs.service \
+      $CONTAINER_ROOT/etc/systemd/system/gocryptfs.service
 
 Install and enable the gunicorn service:
 
-    cp $REPO_DIR/config/gunicorn.service /var/lib/machines/etrial/etc/systemd/system
+    ln -s /var/lib/etrial/config/gunicorn.service \
+      $CONTAINER_ROOT/etc/systemd/system/gunicorn.service
     ln -s /etc/systemd/system/gunicorn.service \
       $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/gunicorn.service
 
@@ -74,7 +85,7 @@ and start it immediately:
     systemctl enable systemd-nspawn@etrial
     systemctl start systemd-nspawn@etrial
 
-You should have a file in the current directory called `scott.crt` which can
+You should have a file in the current directory called `scott.pfx` which can
 be imported into your browser to access the web interface which is now running
 on the IP address assigned to your container.
 

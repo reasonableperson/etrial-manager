@@ -1,22 +1,31 @@
 [Unit]
 Description=encrypted storage location
+Requires=sshd.service
+Before=sshd.service
 
 [Service]
 Type=oneshot
+User=etrial
 RemainAfterExit=yes
+PermissionsStartOnly=true
 
-ExecStart=mkdir /crypt
-ExecStart=gocryptfs -passfile /tmp/crypt.key /home/etrial/crypt /crypt
-ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
-ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/jury/dev/journal
-ExecStart=systemd-mount -o bind /run/systemd/journal /crypt/witness/dev/journal
+ExecStartPre=mkdir /crypt
+ExecStartPre=chown root:etrial /crypt
+ExecStartPre=chmod 770 /crypt
+ExecStartPre=gocryptfs -passfile /tmp/crypt.key -allow_other /home/etrial/crypt /crypt
 ExecStart=touch /crypt/documents.toml.txt
 ExecStart=touch /crypt/documents.users.txt
-ExecStart=chown root:etrial -R /crypt
-ExecStart=chmod 770 -R /crypt
+ExecStart=mkdir -p /crypt/judge /crypt/jury /crypt/witness
+ExecStartPost=rm /tmp/crypt.key
+ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
+ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/jury/dev/journal
+ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/witness/dev/journal
 
-ExecStop=systemd-mount --unmount /crypt/judge/dev/journal
-ExecStop=systemd-mount --unmount /crypt/jury/dev/journal
-ExecStop=systemd-mount --unmount /crypt/witness/dev/journal
-ExecStop=fusermount -u /crypt
-ExecStop=rm -r /crypt
+ExecStopPost=-systemd-umount /crypt/judge/dev/journal
+ExecStopPost=-systemd-umount /crypt/jury/dev/journal
+ExecStopPost=-systemd-umount /crypt/witness/dev/journal
+ExecStopPost=-fusermount -u /crypt
+ExecStopPost=-rm -r /crypt
+
+[Install]
+RequiredBy=sshd.service
