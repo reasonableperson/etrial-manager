@@ -83,54 +83,39 @@ document.addEventListener('DOMContentLoaded', function () {
   const grantSftp = async (name) => {
     const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
     console.log(response)
-    window.location.reload()
+    // window.location.reload()
   }
 
   const denySftp = async (name) => {
     const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
     console.log(response)
-    window.location.reload()
+    // window.location.reload()
   }
+
+  // Click handler that is fired whenever you clikc
 
   const handleMatrix = function (e) {
     const d = e.target.dataset
-
-    if (e.target.tagName == "TD") {
-      console.log(d.action, d.userClass, d.idKey, d.idValue)
-      if (d.action == 'delete')
+    if (e.target.tagName != "TD") return
+    console.log('action', d.action, d.userClass, d.idKey, d.idValue)
+    switch (d.action) {
+      case 'delete':
         _delete(d.idValue)
-      else if (d.action == 'publish' && e.target.classList.contains('active'))
-        recall(d.idValue, d.userClass)
-      else if (d.action == 'publish')
-        publish(d.idValue, d.userClass)
-      else if (d.action == 'sftp' && e.target.classList.contains('active'))
-        denySftp(d.idValue, d.userClass)
-      else if (d.action == 'sftp')
-        grantSftp(d.idValue, d.userClass)
-      else
+        break
+      case 'publish':
+        if (e.target.classList.contains('active'))
+          recall(d.idValue, d.userClass)
+        else
+          publish(d.idValue, d.userClass)
+        break
+      case 'sftp':
+        if (e.target.classList.contains('active'))
+          denySftp(d.idValue, d.userClass)
+        else
+          grantSftp(d.idValue, d.userClass)
+        break
+      default:
         console.error(d.action, 'not implemented')
-    }
-
-    if (e.target.tagName == "BUTTON") {
-
-      if (d.arg == "custom") {
-        e.target.parentNode.className = 'identifier edit'
-
-      } else if (e.target.className == "assign") {
-        var req = new XMLHttpRequest()
-        req.open('POST', `/identify/${d.hash}/${d.arg}`, true)
-        req.addEventListener('load', () => { window.location.reload() })
-        req.send()
-
-      } else if (e.target.className == "delete") {
-        var req = new XMLHttpRequest()
-        req.open('POST', `/delete/${d.hash}`, true)
-        req.addEventListener('load', () => { window.location.reload() })
-        req.send()
-
-      } else {
-        console.log(d.hash, e.target.className, d.arg)
-      }
     }
   }
 
@@ -139,6 +124,8 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('dragover', highlight, false)
   document.addEventListener('drop', accept, false)
 
+  // Attach click handlers to the specified IDs, if they exist, without
+  // throwing an error. This way, the same JavaScript can be run on every page.
   const maybeAttach = (_id, _event, callback) => {
     if (document.getElementById(_id) !== null) {
       document.getElementById(_id).addEventListener(_event, callback, false)
@@ -148,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
   maybeAttach('documents', 'click', handleMatrix)
   maybeAttach('settings', 'click', handleMatrix)
 
+  // Not sure what this does. Does it need to be removed?
   if (document.getElementById('submenu')) {
     document.getElementById('submenu').addEventListener('click', (e) => {
       console.log(e)
