@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const handleMatrix = function (e) {
     const d = e.target.dataset
     if (e.target.tagName != "TD") return
-    console.log('action', d.action, d.userClass, d.idKey, d.idValue)
+    console.log('action', d.row, d.col, d.status)
     switch (d.action) {
       case 'delete':
         _delete(d.idValue)

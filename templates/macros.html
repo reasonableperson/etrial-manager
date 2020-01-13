@@ -1,21 +1,22 @@
-{% macro matrix(meta, action, id_key, id_value) %}
+<!--  This macro produces a number of columns which can be embedded into either
+      the documents page or the settings page. A row is either a document or a
+      user; a column is the class of user (eg. admin, judge, jury). The status
+      indicates whether the kind of permission determined by the page has been
+      granted. -->
 
-<td class="matrix judge
-  {% if 'judge' in meta[action] %} active{% endif %}"
-  data-action="{{action}}" data-user-class="judge"
-  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+{% macro matrix_cell(row, col, status) %}
+<td class="matrix" data-row="{{ row }}" data-col="{{ col }}" data-status="{{ status }}"></td>
+{% endmacro %}
 
-<td class="matrix jury
-  {% if 'jury' in meta[action] %} active{% endif %}"
-  data-action="{{action}}" data-user-class="jury"
-  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+{% macro matrix_row(page, row_id, cell_status) %}
 
-<td class="matrix witness {{ action }}
-  {% if 'witness' in meta[action] %} active{% endif %}"
-  data-action="{{action}}" data-current-state="" data-user-class="witness"
-  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+{% if page == 'settings' %}
+{{ matrix_cell(row_id, 'admin', false) }}
+{% endif %}
 
-<td class="matrix delete" data-action="delete"
-  data-id-key="{{ id_key }}" data-id-value="{{ id_value }}"></td>
+{{ matrix_cell(row_id, 'judge', false) }}
+{{ matrix_cell(row_id, 'jury', false) }}
+{{ matrix_cell(row_id, 'witness', false) }}
+<td class="matrix delete" data-row="{{ row_id }}" data-col="delete"></td>
 
 {% endmacro %}

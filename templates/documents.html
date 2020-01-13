@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import matrix %}
+{% from "macros.html" import matrix_row %}
 {% block title %}Documents{% endblock %}
 {% block content %}
 
@@ -37,36 +37,25 @@
       <th class="rotate">Delete</th>
     </tr>
   </thead><tbody>
-  {% for hash, meta in metadata %}
-    <tr>
-      <td class="identifier tooltip with-button">
-        <div class="tip">{{ hash }}</div>
-        {% if meta.identifier %}
-        <strong>{{ meta.identifier }}</strong>
-      </td><td>
-        <button class="edit" data-hash="{{hash}}"
-          title="Edit identifier">✏️</button>
-        {% else %}
-        <code>{{hash|truncate(9)|safe}}</code>
-      </td><td>
-        <button class="assign" data-arg="MFI" data-hash="{{hash}}"
-          title="Magically assign the next identifier">✨</button>
-        {% endif %}
-      </td>
-      <td class="with-button">
-        <a href="/store/{{ hash }}">{{ meta.title }}</a>
-      </td><td>
-        <button class="edit">✏️</button>
-      </td>
+  {% for row_hash, row_data in documents %}
+    <tr data-rowId="{{ row_hash }}">
+      <td class="identifier tooltip">
+        <div class="tip">{{ row_hash }}</div>
+        <code>{{row_hash|truncate(9)|safe}}</code>
+        <strong>{{ row_data.identifier }}</strong>
+      </td><td class="matrix edit">edit or assign</td>
+      <td data-col="title">
+        <a href="/store/{{ hash }}">{{ row_data.title }}</a>
+      </td><td class="matrix edit">edit</td>
       <td class="added">
-        <span class="date">{{ meta.added | localise | long_date }}</span><br>
-        <span class="time">{{ meta.added | localise | long_time }}</span>
-        <span class="tz">{{ meta.added | localise | tz }}</span>
+        <span class="date">{{ row_data.added | localise | long_date }}</span><br>
+        <span class="time">{{ row_data.added | localise | long_time }}</span>
+        <span class="tz">{{ row_data.added | localise | tz }}</span>
       </td>
-      {{ matrix(meta, 'publish', 'hash', hash) }}
+      {{ matrix_row('documents', row_hash, row_data.status) }}
     </tr>
   {% endfor %}
-  {% if not metadata %}
+  {% if not documents %}
   <tr id="placeholder-row"><td colspan="9">
     You haven't uploaded any documents yet. Drag and drop a document here to
     upload it.

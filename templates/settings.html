@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% from "macros.html" import matrix %}
-{% block title %}Admin{% endblock %}
+{% from "macros.html" import matrix_row %}
+{% block title %}Settings{% endblock %}
 
 {% block content %}
 
@@ -8,6 +8,7 @@
 
 <table id="users">
   <tr>
+    <th>Full name</th>
     <th>User</th>
     <th>Added</th>
     <th>Seen</th>
@@ -17,26 +18,30 @@
     <th>Witness</th>
     <th>Delete</th>
   </tr>
-  {% for name, user in users.items() %}
+  {% for login, user in users.items() %}
   <tr>
-    <td>{{ name }}</td>
+    <td>{{ user.real_name }}</td>
+    <td>{{ login }}</td>
     <td class="added">
+      {% if added in user %}
       <span class="date">{{ user.added | localise | long_date }}</span><br>
       <span class="time">{{ user.added | localise | long_time }}</span>
       <span class="tz">{{ user.added | localise | tz }}</span>
+      {% endif %}
     </td>
     <td class="seen">
       <span class="date">{{ user.seen | localise | long_date }}</span><br>
       <span class="time">{{ user.seen | localise | long_time }}</span>
       <span class="tz">{{ user.seen | localise | tz }}</span>
     </td>
-    <td><button>Create admin certificate</button></td>
-    {{ matrix(users, 'sftp', 'name', name) }}
+    {{ matrix_row('settings', name, user.status) }}
   </tr>
   {% endfor %}
   <tr>
-    <td><input name="name" placeholder="Name"></td>
-    <td colspan="7"><button>Create new user</button></td>
+    <form id="new-user" action="/settings/user/add" method="POST">
+      <td><input name="name" placeholder="New user's full name ..."></td>
+      <td colspan="8"><input type="submit" value="Add new user"/></td>
+    </form>
   </tr>
 </table>
 
