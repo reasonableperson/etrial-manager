@@ -54,9 +54,8 @@ section table th.sort.active::after { content: " ▴" }
 section table th.sort.active.reverse::after { content: " ▾" }
 
 section table .identifier,
-section table .date, section table .time { white-space: nowrap }
 section table .tz { font-size: 0.7em }
-section table .added { white-space: nowrap; text-align: right }
+section table .added, .seen { width: 8em; white-space: nowrap; text-align: right }
 
 section table .tooltip { position: relative; cursor: pointer }
 section table .tooltip:hover { background: #e1d1f0; transition: background 0.3s ease-out }

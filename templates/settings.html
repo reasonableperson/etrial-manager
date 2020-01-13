@@ -7,42 +7,46 @@
 <h2>Users</h2>
 
 <table id="users">
-  <tr>
-    <th>Full name</th>
-    <th>User</th>
-    <th>Added</th>
-    <th>Seen</th>
-    <th>Admin</th>
-    <th>Judge</th>
-    <th>Jury</th>
-    <th>Witness</th>
-    <th>Delete</th>
-  </tr>
-  {% for login, user in users.items() %}
-  <tr>
-    <td>{{ user.real_name }}</td>
-    <td>{{ login }}</td>
-    <td class="added">
-      {% if added in user %}
-      <span class="date">{{ user.added | localise | long_date }}</span><br>
-      <span class="time">{{ user.added | localise | long_time }}</span>
-      <span class="tz">{{ user.added | localise | tz }}</span>
-      {% endif %}
-    </td>
-    <td class="seen">
-      <span class="date">{{ user.seen | localise | long_date }}</span><br>
-      <span class="time">{{ user.seen | localise | long_time }}</span>
-      <span class="tz">{{ user.seen | localise | tz }}</span>
-    </td>
-    {{ matrix_row('settings', name, user.status) }}
-  </tr>
-  {% endfor %}
-  <tr>
-    <form id="new-user" action="/settings/user/add" method="POST">
-      <td><input name="name" placeholder="New user's full name ..."></td>
-      <td colspan="8"><input type="submit" value="Add new user"/></td>
-    </form>
-  </tr>
+  <thead>
+    <tr>
+      <th>Full name</th>
+      <th>User</th>
+      <th>Added</th>
+      <th>Seen</th>
+      <th>Admin</th>
+      <th>Judge</th>
+      <th>Jury</th>
+      <th>Witness</th>
+      <th>Delete</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for login, user in users.items() %}
+    <tr>
+      <td>{{ user.real_name }}</td>
+      <td>{{ login }}</td>
+      <td class="added">
+        {% if added in user %}
+        <span class="date">{{ user.added | localise | long_date }}</span><br>
+        <span class="time">{{ user.added | localise | long_time }}</span>
+        <span class="tz">{{ user.added | localise | tz }}</span>
+        {% endif %}
+      </td>
+      <td class="seen">
+        <span class="date">{{ user.seen | localise | long_date }}</span><br>
+        <span class="time">{{ user.seen | localise | long_time }}</span>
+        <span class="tz">{{ user.seen | localise | tz }}</span>
+      </td>
+      {{ matrix_row('settings', name, user.status) }}
+    </tr>
+    {% endfor %}
+    <tr>
+      <form id="new-user" action="/settings/user/add" method="POST">
+        <td><input name="name" placeholder="New user's full name ..."></td>
+        <td colspan="8"><input type="submit" value="Add new user"/></td>
+      </form>
+    </tr>
+  </tbody>
 </table>
 
 <h2>Filesystem</h2>
