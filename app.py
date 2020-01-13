@@ -65,24 +65,33 @@ def refresh_hardlinks(metadata, user_group):
 
 # Authentication
 
-def get_user(full_list=False):
+def get_current_user(full_list=False):
+    """ Return the name of the current web interface user, based on their
+        SSL fingerprint. This requires access to the user list, which is
+        stored in /crypt. This function will throw FileNotFoundError if it is
+        called when /crypt is not mounted. """
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
-    user = re.search('CN=([^,]*),', dn).group(1)
-    # if we haven't seen this user before, save their fingerprint
+    real_name = re.search('CN=([^,]*),', dn).group(1)
     if os.path.exists(USERS_FILE):
+        # determine username from realname
         users = load_metadata(metadata_file=USERS_FILE)
-        if user not in users:
-            users[user] = dict(fingerprint=fingerprint, added=now())
-        users[user]['seen'] = now()
+        username = [k for k, v in users.items() if v['name'] == real_name][0]
+        # if we haven't seen this user before, save their fingerprint
+        users[username]['seen'] = now()
         save_metadata(users, metadata_file=USERS_FILE)
-    return users if full_list else user
+        return users if full_list else users[username]
+    else:
+        return real_name
 
 # Logging
 
 def log_silent(msg, level=logging.INFO):
     if type(msg) != dict: msg = {'message': msg}
-    msg['user'] = get_user()
+    # generally we want to log the user performing the action, but we may also
+    # perform some loggable actions (eg. decryption) while /crypt is
+    # unavailable, so we can ignore it when get_current_user() fails
+    msg['user'] = get_current_user()
     logging.log(level, json.dumps(msg))
     return msg
 
@@ -129,23 +138,25 @@ def cmd_settings_decrypt():
 @app.route('/documents')
 def page_documents():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
-    # handle sort argments
+    # handle any sort field specified by the user
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
         if sort['field'] is not None: return redirect('/documents')
         else: sort['field'] = 'added'
     sort['reverse'] = sort['reverse'] == ''
     sort_key = (lambda field: lambda pair: pair[1].get(field) or '')(sort['field'])
+
+    # load toml file and sort it accordingly
     metadata = sorted(load_metadata().items(), key=sort_key, reverse=sort['reverse'])
 
-    user = get_user()
-    return render_template('documents.html', metadata=metadata, user=user, sort=sort)
+    user = get_current_user()
+    return render_template('documents.html', documents=metadata, user=user, sort=sort)
 
 @app.route('/log')
 def page_log():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
-    user = get_user()
+    user = get_current_user()
 
     script = [os.path.join(CODE_ROOT, 'scripts', 'filtered-journal.sh')]
     stdout = shell(script)
@@ -161,7 +172,7 @@ def page_settings():
     df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
     crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
-    return render_template('settings.html', users=get_user(full_list=True), fsdata=fsdata)
+    return render_template('settings.html', users=get_current_user(full_list=True), fsdata=fsdata)
 
 # Document commands
 
@@ -169,7 +180,7 @@ def page_settings():
 def cmd_documents_upload():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
-    user = get_user()
+    user = get_current_user()
     title = request.args.get('filename')
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
@@ -195,7 +206,7 @@ def cmd_documents_publish(_hash, user_group):
         'user_group': user_group
     })
     if 'publish' not in metadata[_hash]: metadata[_hash]['publish'] = []
-    metadata[_hash]['publish'].append(user_group)
+    metadata[_hash][user_group] = True
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200
@@ -209,7 +220,7 @@ def cmd_documents_recall(_hash, user_group):
         'action': 'recall', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     }, logging.WARNING)
-    metadata[_hash]['publish'].remove(user_group)
+    del metadata[_hash][user_group]
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200
@@ -217,7 +228,7 @@ def cmd_documents_recall(_hash, user_group):
 @app.route('/delete/<_hash>', methods=['POST'])
 def cmd_documents_delete(_hash):
     metadata = load_metadata()
-    user = get_user()
+    user = get_current_user()
     published_to = metadata[_hash].get('publish')
     if published_to is None or published_to == []:
         msg = log_flash({
@@ -240,14 +251,19 @@ def cmd_documents_delete(_hash):
 def cmd_settings_tls_cert_create():
     pass
 
-@app.route('/settings/ssh/create', methods=['POST'])
 def cmd_settings_ssh_key_create():
+    """ Create a new SSH key. This will be called by the 'grant' command if
+        necessary. """
+    pass
+
+@app.route('/settings/sftp/grant', methods=['POST'])
+def cmd_settings_sftp_grant():
     pass
 
 # Template utilities
 
 @app.context_processor
-def t_inject_user(): return dict(user=get_user())
+def t_inject_user(): return dict(user=get_current_user())
 
 @app.context_processor
 def t_inject_crypt_root(): return dict(secure_path=CRYPT_ROOT)
