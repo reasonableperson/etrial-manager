@@ -76,9 +76,20 @@ def get_current_user(full_list=False):
     if os.path.exists(USERS_FILE):
         # determine username from realname
         users = load_metadata(metadata_file=USERS_FILE)
-        username = [k for k, v in users.items() if v['name'] == real_name][0]
+        matches = [k for k, v in users.items() if 'name' in v and v['name'] == real_name]
+        # if we know this user, 
+        if len(matches) == 1:
+            username = matches[0]
+            users[username]['seen'] = now()
         # if we haven't seen this user before, save their fingerprint
-        users[username]['seen'] = now()
+        else:
+            username = real_name.split(' ')[0].lower()
+            users[username] = {
+                'fingerprint': fingerprint,
+                'real_name': real_name,
+                'seen': now(),
+                'added': None,
+            }
         save_metadata(users, metadata_file=USERS_FILE)
         return users if full_list else users[username]
     else:
@@ -91,7 +102,7 @@ def log_silent(msg, level=logging.INFO):
     # generally we want to log the user performing the action, but we may also
     # perform some loggable actions (eg. decryption) while /crypt is
     # unavailable, so we can ignore it when get_current_user() fails
-    msg['user'] = get_current_user()
+    msg['user'] = get_current_user()['real_name']
     logging.log(level, json.dumps(msg))
     return msg
 
@@ -110,30 +121,42 @@ def page_home():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     return redirect('/documents')
 
+def purge_cryptfs():
+    log_silent('Creating new encrypted volume.')
+    stdout = shell(['/var/lib/etrial/scripts/create-gocryptfs.sh', 'purge'])
+    key = stdout.split('\n')[0]
+    return render_template('encrypted.html', key=key)
+
 @app.route('/encrypted')
 def page_encrypted():
     if os.path.exists(METADATA_FILE): return redirect('/')
     if os.path.exists('/home/etrial/crypt'):
         return render_template('encrypted.html')
     else:
-        log_silent('Creating new encrypted volume.')
-        stdout = shell(['/var/lib/etrial/scripts/create-gocryptfs.sh', 'purge'])
-        key = stdout.split('\n')[0]
-        return render_template('encrypted.html', key=key)
+        return purge_cryptfs()
 
 @app.route('/decrypt', methods=['POST'])
 def cmd_settings_decrypt():
+    # if the metadata file already exists, you shouldn't be here
     if (os.path.exists(METADATA_FILE)):
         return redirect('/')
-    try:
+    # if a key has been provided, try to decrypt with it
+    elif 'key' in request.form:
         with open('/tmp/crypt.key', 'w') as fd:
             fd.write(request.form['key'] + '\n')
         time.sleep(0.5)
-        log_silent('Decrypted filesystem.')
-        return redirect('/documents')
-    except:
-        log_flash('Failed to decrypt filesystem.', logging.ERROR)
-        return redirect('/encrypted')
+        if os.path.exists(METADATA_FILE):
+            log_silent('Decrypted filesystem.')
+            return redirect('/documents')
+        else:
+            log_flash('Failed to decrypt filesystem.', logging.ERROR)
+            return redirect('/encrypted')
+    elif 'action' in request.form:
+        if request.form['action'] == 'delete all my data':
+            return purge_cryptfs()
+        else:
+            log_flash('You didn\'t seem sure enough. Nothing was done.', logging.ERROR)
+            return redirect('/encrypted')
 
 @app.route('/documents')
 def page_documents():
@@ -246,6 +269,23 @@ def cmd_documents_delete(_hash):
         return json.dumps(msg), 400
 
 # Settings commands
+
+@app.route('/settings/user/add', methods=['POST'])
+def cmd_settings_user_add():
+    real_name = request.form['name']
+    users = get_current_user(full_list=True)
+    if real_name is not None and real_name != '':
+        username = real_name.split(' ')[0].lower()
+        users[username] = {
+            'real_name': real_name,
+            'seen': now(),
+            'added': now(),
+        }
+        save_metadata(users, metadata_file=USERS_FILE)
+        log_flash(f'Added new user {real_name}.')
+    else:
+        log_flash(f'That\'s not a valid username.')
+    return redirect('/settings')
 
 @app.route('/settings/tls/create', methods=['POST'])
 def cmd_settings_tls_cert_create():
