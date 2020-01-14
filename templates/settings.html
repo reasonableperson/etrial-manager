@@ -37,7 +37,7 @@
         <span class="time">{{ user.seen | localise | long_time }}</span>
         <span class="tz">{{ user.seen | localise | tz }}</span>
       </td>
-      {{ matrix_row('settings', name, user.status) }}
+      {{ matrix_row('settings', login, user.status) }}
     </tr>
     {% endfor %}
     <tr>
