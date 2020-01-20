@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const _delete = async (hash) => {
     const response = await fetch(`/delete/${hash}`, { 'method': 'POST' })
-    console.log(response)
     window.location.reload()
   }
 
@@ -92,15 +91,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // window.location.reload()
   }
 
-  // Click handler that is fired whenever you clikc
-
   const handleMatrix = function (e) {
-    const d = e.target.dataset
+    // don't do anything if the handler is fired by something other than a <td>
     if (e.target.tagName != "TD") return
-    console.log('action', d.row, d.col, d.status)
+    // figure out if we are on the settings page or the documents page
+    const pageType = e.target.parentNode.parentNode.parentNode.id
+    const d = e.target.dataset
+    console.log(d.action, d.row, d.col)
     switch (d.action) {
       case 'delete':
-        _delete(d.idValue)
+        //_delete(d.idValue)
         break
       case 'publish':
         if (e.target.classList.contains('active'))
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         else
           publish(d.idValue, d.userClass)
         break
-      case 'sftp':
+      case 'grant':
         if (e.target.classList.contains('active'))
           denySftp(d.idValue, d.userClass)
         else

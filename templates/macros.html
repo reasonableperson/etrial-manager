@@ -4,19 +4,21 @@
       indicates whether the kind of permission determined by the page has been
       granted. -->
 
-{% macro matrix_cell(row, col, status) %}
-<td class="matrix" data-row="{{ row }}" data-col="{{ col }}" data-status="{{ status }}"></td>
+{% macro matrix_cell(row, col, active) %}
+<td class="matrix{% if active %} active{% endif %}"
+  data-row="{{ row }}" data-col="{{ col }}"
+  data-action="{% if active %}deny{% else %}grant{% endif %}"></td>
 {% endmacro %}
 
-{% macro matrix_row(page, row_id, cell_status) %}
+{% macro matrix_row(page, row_id, groups) %}
 
 {% if page == 'settings' %}
-{{ matrix_cell(row_id, 'admin', false) }}
+{{ matrix_cell(row_id, 'admin', 'admin' in groups) }}
 {% endif %}
 
-{{ matrix_cell(row_id, 'judge', false) }}
-{{ matrix_cell(row_id, 'jury', false) }}
-{{ matrix_cell(row_id, 'witness', false) }}
-<td class="matrix delete" data-row="{{ row_id }}" data-col="delete"></td>
+{{ matrix_cell(row_id, 'judge', 'judge' in groups) }}
+{{ matrix_cell(row_id, 'jury', 'jury' in groups) }}
+{{ matrix_cell(row_id, 'witness', 'witness' in groups) }}
+<td class="matrix delete" data-row="{{ row_id }}" data-action="delete"></td>
 
 {% endmacro %}

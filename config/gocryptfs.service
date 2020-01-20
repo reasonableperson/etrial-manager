@@ -17,6 +17,17 @@ ExecStart=touch /crypt/documents.toml.txt
 ExecStart=touch /crypt/users.toml.txt
 ExecStart=mkdir -p /crypt/store /crypt/judge/Documents /crypt/jury/Documents /crypt/witness/Documents
 ExecStartPost=rm /tmp/crypt.key
+
+# If we are mounting /crypt for the first time, there will be HTTPS client
+# authentication credentials in /tmp left over from configure-nginx.sh. Move
+# these into /crypt and assign appropriate permissions, so that the app can
+# be used to add new HTTPS users.
+
+ExecStartPost=-mkdir -p /crypt/https
+ExecStartPost=-mv /tmp/client.key /crypt/https
+ExecStartPost=-mv /tmp/client.crt /crypt/https
+ExecStartPost=-chown -R etrial:etrial /crypt/https
+
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
 ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/judge/dev/log
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/jury/dev/journal

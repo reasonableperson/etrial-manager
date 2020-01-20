@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 def shell(script_args, input=None, check=True):
     try:
         return subprocess.run(script_args, capture_output=True,
-            check=check, input=input, encoding='utf-8').stdout
+            check=check, input=input, encoding='utf-8')
     except subprocess.CalledProcessError as e:
         log_silent(e.output)
         raise
@@ -123,7 +123,9 @@ def page_home():
 
 def purge_cryptfs():
     log_silent('Creating new encrypted volume.')
-    stdout = shell(['/var/lib/etrial/scripts/create-gocryptfs.sh', 'purge'])
+    stdout = shell([
+        os.path.join(CODE_ROOT, 'scripts', 'create-gocryptfs.sh'), 'purge'
+    ]).stdout
     key = stdout.split('\n')[0]
     return render_template('encrypted.html', key=key)
 
@@ -182,7 +184,7 @@ def page_log():
     user = get_current_user()
 
     script = [os.path.join(CODE_ROOT, 'scripts', 'filtered-journal.sh')]
-    stdout = shell(script)
+    stdout = shell(script).stdout
     _json = [json.loads(l) for l in stdout.split('\n') if l != '']
 
     if not request.args.get('reverse') == '': _json.reverse()
@@ -192,8 +194,8 @@ def page_log():
 @app.route('/settings')
 def page_settings():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
-    df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
-    crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).split()[0])
+    df = shell(['df', '-B', '1', '/']).stdout.split('\n')[1].split()
+    crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).stdout.split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
     return render_template('settings.html', users=get_current_user(full_list=True), fsdata=fsdata)
 
@@ -281,8 +283,27 @@ def cmd_settings_user_add():
             'seen': now(),
             'added': now(),
         }
+        # call script to create https client certificate
+        script_result = shell([
+            os.path.join(CODE_ROOT, 'scripts', 'add-https-user.sh'),
+            username, real_name,
+            os.path.join(CRYPT_ROOT, 'https', 'client.crt'),
+            os.path.join(CRYPT_ROOT, 'https', 'client.key'),
+            os.path.join(CRYPT_ROOT, 'https')
+        ], check=False)
+        # if we don't check the shell() call, we can log stderr before raising
+        # an exception if there was a failure
+        log_silent(['stdout', script_result.stdout])
+        log_silent(['stderr', script_result.stderr])
+        assert script_result.returncode == 0
+
+        # the last line of the script's output contains the user's passphrase;
+        # we'll use the existence of this passphrase to decide whether the user
+        # is an admin or not
+        stdout = script_result.stdout.split('\n')
+        users[username]['passphrase'] = stdout[-1]
         save_metadata(users, metadata_file=USERS_FILE)
-        log_flash(f'Added new user {real_name}.')
+        log_flash(script_result.stdout)
     else:
         log_flash(f'That\'s not a valid username.')
     return redirect('/settings')
