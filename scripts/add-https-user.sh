@@ -28,6 +28,11 @@ openssl pkcs12 -export -inkey "$1.key" -in "$1.crt" -out "$1.pfx" \
   -password "pass:$export_password"
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
+# Make the PKCS #12 archive world-readable. That sounds like a terrible idea,
+# and generally it would be, but in this case it is necessary to allow the web
+# server to serve the key to an existing administrator.
+chmod o+r "$1.pfx"
+
 # Delete unneeded artifacts.
 rm "$1.csr" "$1.key" "$1.crt"
 echo "Created TLS certificate bundle $1.pfx in $(pwd)."

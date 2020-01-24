@@ -39,13 +39,18 @@
         <span class="tz">{{ user.seen | localise | tz }}</span>
       </td>
       <!-- HTTPS certificate column -->
-      <td class="matrix{% if 'admin' in user.groups %} active{% endif %}"
+      <td class="key https{% if user.cert %} active{% endif %}"
         data-row="{{ row_id }}" data-col="https"{% if 'admin' in user.groups %}
         data-action="grant"{% endif %}>
+        {% if user.cert %}
         <a href="/keys/{{ login }}.pfx" class="creds">get cert</a>
+        {% endif %}
+        {% if user.passphrase %}
+        <div class="passphrase">{{ user.passphrase }}</div>
+        {% endif %}
       </td>
       <!-- SSH key column -->
-      <td class="matrix ssh"><a href="#">get key</a></td>
+      <td class="key ssh"><a href="#">get key</a></td>
       {{ matrix_row('settings', login, user.groups) }}
     </tr>
     {% endfor %}

@@ -65,6 +65,10 @@ def refresh_hardlinks(metadata, user_group):
 
 # Authentication
 
+def get_user_cert(username):
+    cert_path = f'/crypt/keys/{username}.pfx'
+    return cert_path if os.path.exists(cert_path) else None
+
 def get_current_user(full_list=False):
     """ Return the name of the current web interface user, based on their
         SSL fingerprint. This requires access to the user list, which is
@@ -299,36 +303,35 @@ def cmd_settings_user_add():
             'real_name': real_name,
             'seen': now(),
             'added': now(),
+            'cert': f'{username}.pfx',
         }
-        # call script to create https client certificate
-        script_result = shell([
-            os.path.join(CODE_ROOT, 'scripts', 'add-https-user.sh'),
-            username, real_name,
-            os.path.join(CRYPT_ROOT, 'https', 'client.crt'),
-            os.path.join(CRYPT_ROOT, 'https', 'client.key'),
-            os.path.join(CRYPT_ROOT, 'https')
-        ], check=False)
-        # if we don't check the shell() call, we can log stderr before raising
-        # an exception if there was a failure
-        log_silent(['stdout', script_result.stdout])
-        log_silent(['stderr', script_result.stderr])
-        assert script_result.returncode == 0
-
-        # the last line of the script's output contains the user's passphrase;
-        # we'll use the existence of this passphrase to decide whether the user
-        # is an admin or not
-        stdout = script_result.stdout.split('\n')
+        stdout = create_https_client_cert(username, real_name)
         users[username]['passphrase'] = stdout[-1]
         #users[username]['groups'] = ['admin']
         save_metadata(users, metadata_file=USERS_FILE)
-        log_flash(script_result.stdout)
+        log_flash(stdout)
     else:
         log_flash(f'That\'s not a valid username.')
     return redirect('/settings')
 
-@app.route('/settings/tls/create', methods=['POST'])
-def cmd_settings_tls_cert_create():
-    pass
+def create_https_client_cert(username, real_name):
+    script_result = shell([
+        os.path.join(CODE_ROOT, 'scripts', 'add-https-user.sh'),
+        username, real_name,
+        os.path.join(CRYPT_ROOT, 'keys', 'client.crt'),
+        os.path.join(CRYPT_ROOT, 'keys', 'client.key'),
+        os.path.join(CRYPT_ROOT, 'keys')
+    ], check=False)
+    # if we don't check the shell() call, we can log stderr before raising
+    # an exception if there was a failure
+    log_silent(['stdout', script_result.stdout])
+    log_silent(['stderr', script_result.stderr])
+    assert script_result.returncode == 0
+
+    # the last line of the script's output contains the user's passphrase;
+    # we'll use the existence of this passphrase to decide whether the user
+    # is an admin or not
+    return script_result.stdout.split('\n')
 
 def cmd_settings_ssh_key_create():
     """ Create a new SSH key. This will be called by the 'grant' command if
