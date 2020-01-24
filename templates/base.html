@@ -10,16 +10,29 @@
       <a href="/">e-trial manager</a>
     </h1>
     {% if not request.path == "/encrypted" %}
-    <a href="/documents"{% if request.path == "/documents" %} class="current"{% endif %}>
+
+    <a href="/documents"{% if request.path == "/documents" %} class="current"{% endif %}
+      title="View the list of uploaded documents, or upload new documents">
       <div class="emoji">📖</div>
       <div class="text">Documents</div>
-    </a><a href="/log"{% if request.path == "/log" %} class="current"{% endif %}>
+    </a>
+
+    <a href="/log"{% if request.path == "/log" %} class="current"{% endif %}
+      title="View audit trail of actions by authorised users">
       <div class="emoji">📃</div>
       <div class="text">Log</div>
-    </a><a href="/settings"{% if request.path == "/settings" %} class="current"{% endif %}>
+    </a>
+
+    <a href="/settings"{% if request.path == "/settings" %} class="current"{% endif %}
+      title="View the list of authorised users, and add new users">
       <div class="emoji">⚙️</div>
       <div class="text">Settings</div>
     </a>
+
+    <a id="lock" href="/lock"
+      title="Lock this server, requiring the decryption key to continue use">
+    </a>
+
     {% endif %}
   </nav>
 

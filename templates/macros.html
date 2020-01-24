@@ -1,6 +1,6 @@
 <!--  This macro produces a number of columns which can be embedded into either
       the documents page or the settings page. A row is either a document or a
-      user; a column is the class of user (eg. admin, judge, jury). The status
+      user; a column is the class of user (eg. admin, judge, jury). 'active'
       indicates whether the kind of permission determined by the page has been
       granted. -->
 
@@ -11,10 +11,6 @@
 {% endmacro %}
 
 {% macro matrix_row(page, row_id, groups) %}
-
-{% if page == 'settings' %}
-{{ matrix_cell(row_id, 'admin', 'admin' in groups) }}
-{% endif %}
 
 {{ matrix_cell(row_id, 'judge', 'judge' in groups) }}
 {{ matrix_cell(row_id, 'jury', 'jury' in groups) }}

@@ -1,0 +1,15 @@
+# This unit file is part of the etrial package.
+#
+# This provides a means for any user to stop the gocryptfs service by creating
+# the file /tmp/crypt.lock. Normally stopping the service would require root
+# privileges.
+
+[Unit]
+Description=unmount encrypted storage
+
+[Path]
+PathExists=/tmp/crypt.lock
+Unit=gocryptfs-lock.service
+
+[Install]
+WantedBy=multi-user.target

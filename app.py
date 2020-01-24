@@ -73,27 +73,34 @@ def get_current_user(full_list=False):
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
     real_name = re.search('CN=([^,]*),', dn).group(1)
-    if os.path.exists(USERS_FILE):
+    if not os.path.exists(USERS_FILE):
+        return {'real_name': real_name}
+    else:
         # determine username from realname
         users = load_metadata(metadata_file=USERS_FILE)
         matches = [k for k, v in users.items() if 'name' in v and v['name'] == real_name]
-        # if we know this user, 
+        print(matches)
+        # if the current user's real name is already in the USERS_FILE,
         if len(matches) == 1:
             username = matches[0]
+            # update their last seen time.
             users[username]['seen'] = now()
-        # if we haven't seen this user before, save their fingerprint
-        else:
+        else: # if the user cannot be uniquely matched to the USERS_FILE,
             username = real_name.split(' ')[0].lower()
+            # create an entry in the USERS_FILE
             users[username] = {
                 'fingerprint': fingerprint,
                 'real_name': real_name,
                 'seen': now(),
                 'added': None,
-            }
-        save_metadata(users, metadata_file=USERS_FILE)
+                'groups': ['admin'],
+            } # and save it
+            save_metadata(users, metadata_file=USERS_FILE)
+        # regardless of whether the current (web) user was extracted from the
+        # USERS_FILE or generated for the first time, return the user's metadata.
+        # At this point, since we loaded the thing anyway, we might as well
+        # return the whole thing if the caller passes full_list=True.
         return users if full_list else users[username]
-    else:
-        return real_name
 
 # Logging
 
@@ -122,6 +129,8 @@ def page_home():
     return redirect('/documents')
 
 def purge_cryptfs():
+    """ Unmounts /crypt and deletes ~etrial/crypt, permanently deleting all
+        user data. """
     log_silent('Creating new encrypted volume.')
     stdout = shell([
         os.path.join(CODE_ROOT, 'scripts', 'create-gocryptfs.sh'), 'purge'
@@ -159,6 +168,14 @@ def cmd_settings_decrypt():
         else:
             log_flash('You didn\'t seem sure enough. Nothing was done.', logging.ERROR)
             return redirect('/encrypted')
+
+@app.route('/lock')
+def cmd_settings_lock():
+    stdout = shell(['touch', '/tmp/crypt.lock']).stdout
+    log_flash('Server locked.')
+    # this should, in turn, resolve to /encrypted, but if it doesn't, the user
+    # may at least realise that something is wrong
+    return redirect('/')
 
 @app.route('/documents')
 def page_documents():
@@ -302,6 +319,7 @@ def cmd_settings_user_add():
         # is an admin or not
         stdout = script_result.stdout.split('\n')
         users[username]['passphrase'] = stdout[-1]
+        #users[username]['groups'] = ['admin']
         save_metadata(users, metadata_file=USERS_FILE)
         log_flash(script_result.stdout)
     else:

@@ -1,3 +1,15 @@
+# This unit file is part of the etrial package.
+#
+# If this service is running, the secure part of the filesystem has been
+# decrypted, /crypt is available, and the web app will be usable.
+#
+# If this service is not running, /crypt is not available and the web app will
+# prompt the user for the decryption key.
+#
+# If the user provides the decryption key, the web app will write it to
+# /tmp/crypt.key. systemd watches this path, and will start this service when
+# it is created.
+
 [Unit]
 Description=encrypted storage location
 Requires=sshd.service
@@ -16,6 +28,9 @@ ExecStartPre=gocryptfs -passfile /tmp/crypt.key -allow_other /home/etrial/crypt 
 ExecStart=touch /crypt/documents.toml.txt
 ExecStart=touch /crypt/users.toml.txt
 ExecStart=mkdir -p /crypt/store /crypt/judge/Documents /crypt/jury/Documents /crypt/witness/Documents
+
+# Once /crypt is mounted, we can delete the key from /tmp.
+
 ExecStartPost=rm /tmp/crypt.key
 
 # If we are mounting /crypt for the first time, there will be HTTPS client
@@ -23,10 +38,13 @@ ExecStartPost=rm /tmp/crypt.key
 # these into /crypt and assign appropriate permissions, so that the app can
 # be used to add new HTTPS users.
 
-ExecStartPost=-mkdir -p /crypt/https
-ExecStartPost=-mv /tmp/client.key /crypt/https
-ExecStartPost=-mv /tmp/client.crt /crypt/https
-ExecStartPost=-chown -R etrial:etrial /crypt/https
+ExecStartPost=-mkdir -p /crypt/keys
+ExecStartPost=-mv /tmp/client.key /crypt/keys
+ExecStartPost=-mv /tmp/client.crt /crypt/keys
+ExecStartPost=-chown -R etrial:etrial /crypt/keys
+
+# This complicated bind mount hack is unfortunately needed to get useful logs
+# out of the SFTP daemon in OpenSSH, when using the chroot feature.
 
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/judge/dev/journal
 ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/judge/dev/log

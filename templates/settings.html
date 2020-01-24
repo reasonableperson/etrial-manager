@@ -13,7 +13,8 @@
       <th>User</th>
       <th>Added</th>
       <th>Seen</th>
-      <th>Admin</th>
+      <th>HTTPS</th>
+      <th>SSH</th>
       <th>Judge</th>
       <th>Jury</th>
       <th>Witness</th>
@@ -37,17 +38,26 @@
         <span class="time">{{ user.seen | localise | long_time }}</span>
         <span class="tz">{{ user.seen | localise | tz }}</span>
       </td>
-      {{ matrix_row('settings', login, ['admin']) }}
+      <!-- HTTPS certificate column -->
+      <td class="matrix{% if 'admin' in user.groups %} active{% endif %}"
+        data-row="{{ row_id }}" data-col="https"{% if 'admin' in user.groups %}
+        data-action="grant"{% endif %}>
+        <a href="/keys/{{ login }}.pfx" class="creds">get cert</a>
+      </td>
+      <!-- SSH key column -->
+      <td class="matrix ssh"><a href="#">get key</a></td>
+      {{ matrix_row('settings', login, user.groups) }}
     </tr>
     {% endfor %}
-    <tr>
-      <form id="new-user" action="/settings/user/add" method="POST">
-        <td><input name="name" placeholder="New user's full name ..."></td>
-        <td colspan="8"><input type="submit" value="Add new user"/></td>
-      </form>
-    </tr>
   </tbody>
 </table>
+
+<form id="new-user" action="/settings/user/add" method="POST">
+  <td colspan="10">
+    <input name="name" placeholder="New user's full name ...">
+    <input type="submit" value="Add new user"/>
+  </td>
+</form>
 
 <h2>Filesystem</h2>
 
