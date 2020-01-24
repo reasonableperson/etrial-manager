@@ -15,7 +15,7 @@ ExecStart=/usr/bin/gunicorn --user etrial --reload \
   --reload-extra-file templates/encrypted.html  \
   --reload-extra-file templates/macros.html  \
   --reload-extra-file templates/log.html  \
-  --reload-extra-file templates/settings.html  \
+  --reload-extra-file templates/users.html  \
   app:app
 Restart=on-failure
 RestartSec=5s

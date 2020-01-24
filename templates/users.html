@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "macros.html" import matrix_row %}
-{% block title %}Settings{% endblock %}
+{% block title %}Users{% endblock %}
+{% block page_class %}users{% endblock %}
 
 {% block content %}
 
@@ -57,7 +58,7 @@
   </tbody>
 </table>
 
-<form id="new-user" action="/settings/user/add" method="POST">
+<form id="new-user" action="/users/add" method="POST">
   <td colspan="10">
     <input name="name" placeholder="New user's full name ...">
     <input type="submit" value="Add new user"/>

@@ -3,7 +3,7 @@
   <title>{% if casename %}{{casename}} {% endif %}⚖️ {% block title %}{% endblock %}</title>
   <link rel="stylesheet" type="text/css" href="/static/style.css">
 </head>
-<body>
+<body class="{% block page_class %}{% endblock %}">
 
   <nav id="menu">
     <h1>
@@ -23,10 +23,10 @@
       <div class="text">Log</div>
     </a>
 
-    <a href="/settings"{% if request.path == "/settings" %} class="current"{% endif %}
+    <a href="/users"{% if request.path == "/users" %} class="current"{% endif %}
       title="View the list of authorised users, and add new users">
       <div class="emoji">⚙️</div>
-      <div class="text">Settings</div>
+      <div class="text">Users</div>
     </a>
 
     <a id="lock" href="/lock"

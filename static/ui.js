@@ -58,65 +58,17 @@ document.addEventListener('DOMContentLoaded', function () {
     req.send(file)
   }
 
-  // Publish a document to the selected user group.
-
-  const publish = async (hash, user_class) => {
-    const response = await fetch(`/publish/${hash}/${user_class}`, { 'method': 'POST' })
-    console.log(response)
-    window.location.reload()
-  }
-
-  // Recall a document from the selected user group.
-
-  const recall = async (hash, user_class) => {
-    const response = await fetch(`/recall/${hash}/${user_class}`, { 'method': 'POST' })
-    console.log(response)
-    window.location.reload()
-  }
-
-  const _delete = async (hash) => {
-    const response = await fetch(`/delete/${hash}`, { 'method': 'POST' })
-    window.location.reload()
-  }
-
-  const grantSftp = async (name) => {
-    const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
-    console.log(response)
-    // window.location.reload()
-  }
-
-  const denySftp = async (name) => {
-    const response = await fetch(`/settings/sftp/grant/${name}`, { 'method': 'POST' })
-    console.log(response)
-    // window.location.reload()
-  }
-
-  const handleMatrix = function (e) {
+  const handleMatrix = async function (e) {
     // don't do anything if the handler is fired by something other than a <td>
     if (e.target.tagName != "TD") return
     // figure out if we are on the settings page or the documents page
-    const pageType = e.target.parentNode.parentNode.parentNode.id
+    const pageType = document.body.classList
     const d = e.target.dataset
-    console.log(d.action, d.row, d.col)
-    switch (d.action) {
-      case 'delete':
-        //_delete(d.idValue)
-        break
-      case 'publish':
-        if (e.target.classList.contains('active'))
-          recall(d.idValue, d.userClass)
-        else
-          publish(d.idValue, d.userClass)
-        break
-      case 'grant':
-        if (e.target.classList.contains('active'))
-          denySftp(d.idValue, d.userClass)
-        else
-          grantSftp(d.idValue, d.userClass)
-        break
-      default:
-        console.error(d.action, 'not implemented')
-    }
+    const url = "/" + pageType + "/" + d.action + "/" + d.row + "/" + (d.col || "")
+    console.log(url)
+    const response = await fetch(url, { 'method': 'POST' })
+    console.log(response.status, response.body)
+    //window.location.reload()
   }
 
   document.addEventListener('dragenter', highlight, false)
@@ -133,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   maybeAttach('documents', 'click', handleMatrix)
-  maybeAttach('settings', 'click', handleMatrix)
+  maybeAttach('users', 'click', handleMatrix)
 
   // Not sure what this does. Does it need to be removed?
   if (document.getElementById('submenu')) {

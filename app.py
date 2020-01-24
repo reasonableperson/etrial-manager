@@ -151,7 +151,7 @@ def page_encrypted():
         return purge_cryptfs()
 
 @app.route('/decrypt', methods=['POST'])
-def cmd_settings_decrypt():
+def cmd_decrypt():
     # if the metadata file already exists, you shouldn't be here
     if (os.path.exists(METADATA_FILE)):
         return redirect('/')
@@ -174,7 +174,7 @@ def cmd_settings_decrypt():
             return redirect('/encrypted')
 
 @app.route('/lock')
-def cmd_settings_lock():
+def cmd_lock():
     stdout = shell(['touch', '/tmp/crypt.lock']).stdout
     log_flash('Server locked.')
     # this should, in turn, resolve to /encrypted, but if it doesn't, the user
@@ -212,17 +212,17 @@ def page_log():
 
     return render_template('log.html', metadata=metadata, log=_json)
 
-@app.route('/settings')
-def page_settings():
+@app.route('/users')
+def page_users():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     df = shell(['df', '-B', '1', '/']).stdout.split('\n')[1].split()
     crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).stdout.split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
-    return render_template('settings.html', users=get_current_user(full_list=True), fsdata=fsdata)
+    return render_template('users.html', users=get_current_user(full_list=True), fsdata=fsdata)
 
 # Document commands
 
-@app.route('/upload', methods=['POST'])
+@app.route('/documents/add', methods=['POST'])
 def cmd_documents_upload():
     if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
@@ -242,7 +242,7 @@ def cmd_documents_upload():
     })
     return msg, 200
 
-@app.route('/publish/<_hash>/<user_group>', methods=['POST'])
+@app.route('/documents/grant/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_publish(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
@@ -257,7 +257,7 @@ def cmd_documents_publish(_hash, user_group):
     save_metadata(metadata)
     return msg, 200
 
-@app.route('/recall/<_hash>/<user_group>', methods=['POST'])
+@app.route('/documents/deny/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_recall(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
@@ -271,7 +271,7 @@ def cmd_documents_recall(_hash, user_group):
     save_metadata(metadata)
     return msg, 200
 
-@app.route('/delete/<_hash>', methods=['POST'])
+@app.route('/documents/delete/<_hash>', methods=['POST'])
 def cmd_documents_delete(_hash):
     metadata = load_metadata()
     user = get_current_user()
@@ -291,10 +291,10 @@ def cmd_documents_delete(_hash):
         }, level=logging.ERROR)
         return json.dumps(msg), 400
 
-# Settings commands
+# Users commands
 
-@app.route('/settings/user/add', methods=['POST'])
-def cmd_settings_user_add():
+@app.route('/users/add', methods=['POST'])
+def cmd_users_add():
     real_name = request.form['name']
     users = get_current_user(full_list=True)
     if real_name is not None and real_name != '':
@@ -303,16 +303,23 @@ def cmd_settings_user_add():
             'real_name': real_name,
             'seen': now(),
             'added': now(),
-            'cert': f'{username}.pfx',
         }
         stdout = create_https_client_cert(username, real_name)
+        log_flash(stdout)
         users[username]['passphrase'] = stdout[-1]
+        users[username]['cert'] = f'{username}.pfx'
+        users[username]['key'] = create_ssh_key(username)
+
         #users[username]['groups'] = ['admin']
         save_metadata(users, metadata_file=USERS_FILE)
-        log_flash(stdout)
     else:
         log_flash(f'That\'s not a valid username.')
-    return redirect('/settings')
+    return redirect('/users')
+
+@app.route('/users/delete/<username>/', methods=['POST'])
+def cmd_users_delete(username):
+    log_flash(f'Deleted user {username}.')
+    return redirect('/users')
 
 def create_https_client_cert(username, real_name):
     script_result = shell([
@@ -333,14 +340,16 @@ def create_https_client_cert(username, real_name):
     # is an admin or not
     return script_result.stdout.split('\n')
 
-def cmd_settings_ssh_key_create():
-    """ Create a new SSH key. This will be called by the 'grant' command if
-        necessary. """
-    pass
-
-@app.route('/settings/sftp/grant', methods=['POST'])
-def cmd_settings_sftp_grant():
-    pass
+def create_ssh_key(username):
+    path = f'{username}.ssh.txt'
+    stdout = shell([
+        'ssh-keygen', '-t', 'rsa', '-m', 'PEM', 
+        '-f', os.path.join(CRYPT_ROOT, 'keys', path),
+        '-C', f'{username}-{datetime.datetime.now().strftime("%Y-%m-%d")}',
+        '-N', ''
+    ]).stdout
+    log_flash(stdout)
+    return path
 
 # Template utilities
 
