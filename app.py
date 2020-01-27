@@ -177,6 +177,7 @@ def cmd_decrypt():
 def cmd_lock():
     stdout = shell(['touch', '/tmp/crypt.lock']).stdout
     log_flash('Server locked.')
+    time.sleep(0.5)
     # this should, in turn, resolve to /encrypted, but if it doesn't, the user
     # may at least realise that something is wrong
     return redirect('/')
