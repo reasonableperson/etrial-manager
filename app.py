@@ -44,24 +44,37 @@ def save_metadata(metadata, metadata_file=METADATA_FILE):
     with open(metadata_file, 'w') as fd:
         return toml.dump(metadata, fd)
 
-def refresh_hardlinks(metadata, user_group):
-    """ For each file in the metadata object, check whether it has been newly
+def refresh_hardlinks(documents, user_group):
+    """ For each document in the documents file, check whether it has been newly
         published or recalled, and add or remove hardlinks in the SFTP chroots
         accordingly. """
     user_dir = f'/crypt/{user_group}/Documents'
     existing_hardlinks = os.listdir(user_dir)
-    for _hash, meta in metadata.items():
+    for _hash, document in documents.items():
         source = os.path.join(CRYPT_ROOT, 'store', _hash)
-        destination = os.path.join(user_dir, meta['title'])
-        if 'publish' in meta and user_group in meta['publish']:
-            if meta['title'] not in existing_hardlinks:
+        destination = os.path.join(user_dir, document['title'])
+        if user_group in document['groups']:
+            if document['title'] not in existing_hardlinks:
                 # These documents have been newly published
                 os.link(source, destination)
                 log_silent({'action': 'link', 'source': source, 'destination': destination})
         # These documents have been newly recalled
-        elif meta['title'] in existing_hardlinks:
+        elif document['title'] in existing_hardlinks:
             os.remove(destination)
             log_silent({'action': 'unlink', 'destination': destination})
+
+def refresh_authorized_keys(users, sftp_group):
+    """ Find the set of users who are authorised to access a particular Unix
+        account, and write a suitable authorized_keys file for the account. """
+    authorized_users = [k for k, v in users.items() if sftp_group in v['groups'] and 'key' in v]
+    authorized_keys_file = os.path.join(CRYPT_ROOT, 'keys', f'{sftp_group}.authorized')
+    os.remove(authorized_keys_file)
+    log_silent(f"Clearing {authorized_keys_file}.")
+    with open(authorized_keys_file, 'w') as fd:
+        for u in authorized_users:
+            pubkey = open(os.path.join(CRYPT_ROOT, 'keys', f'{u}.ssh.pub')).read()
+            log_silent(f"Writing {u}.ssh.pub to {authorized_keys_file}.")
+            fd.write(pubkey)
 
 # Authentication
 
@@ -229,7 +242,7 @@ def cmd_documents_upload():
     _hash = h.hexdigest()
     with open(os.path.join(CRYPT_ROOT, 'store', _hash), 'wb') as fd:
         fd.write(request.data)
-    metadata[_hash] = dict(title=title, added=now())
+    metadata[_hash] = dict(title=title, added=now(), groups=[])
     save_metadata(metadata)
     msg = log_flash({
         'message': f'Uploaded {title}.',
@@ -291,29 +304,35 @@ def cmd_documents_delete(_hash):
 
 # Users commands
 
+def create_user(real_name, generate_https=True, generate_ssh=True):
+    username = real_name.split(' ')[0].lower()
+    user = {
+        'real_name': real_name,
+        'seen': now(),
+        'added': now(),
+    }
+    if generate_https:
+        stdout = create_https_client_cert(username, real_name)
+        log_silent(stdout)
+        user['passphrase'] = stdout[-1]
+        user['cert'] = f'{username}.pfx'
+        user['groups'] = ['admin']
+    if generate_ssh:
+        user['key'] = create_ssh_key(username)
+    return username, user
+
 @app.route('/users/add', methods=['POST'])
 def cmd_users_add():
     real_name = request.form['name']
     users = load_metadata(metadata_file=USERS_FILE)
     if real_name is not None and real_name != '':
-        username = real_name.split(' ')[0].lower()
-        users[username] = {
-            'real_name': real_name,
-            'seen': now(),
-            'added': now(),
-        }
-
-        # generate http client certificate for user
-        stdout = create_https_client_cert(username, real_name)
-        log_flash(stdout)
-        users[username]['passphrase'] = stdout[-1]
-        users[username]['cert'] = f'{username}.pfx'
-
-        # generate ssh key for user
-        users[username]['key'] = create_ssh_key(username)
-
-        #users[username]['groups'] = ['admin']
-        save_metadata(users, metadata_file=USERS_FILE)
+        try:
+            username, user = create_user(real_name)
+            users[username] = user
+            save_metadata(users, metadata_file=USERS_FILE)
+            log_flash(f'Created new user {username}.')
+        except:
+            log_flash(f'User creation error.', logging.ERROR)
     else:
         log_flash(f'That\'s not a valid username.')
     return redirect('/users')
@@ -322,11 +341,10 @@ def cmd_users_add():
 def cmd_users_grant(username, sftp_group):
     assert sftp_group in ['judge', 'jury', 'witness']
     users = load_metadata(metadata_file=USERS_FILE)
-    log_flash(users[username]['groups'])
     if sftp_group not in users[username]['groups']:
         users[username]['groups'].append(sftp_group)
-        log_flash(f"appended! f{users[username]['groups']}")
     save_metadata(users, metadata_file=USERS_FILE)
+    refresh_authorized_keys(users, sftp_group)
     msg = log_flash({
         'message': f'Granted user {username} access to {sftp_group}.',
         'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
@@ -340,6 +358,7 @@ def cmd_users_deny(username, sftp_group):
     if sftp_group in users[username]['groups']:
         users[username]['groups'].remove(sftp_group)
     save_metadata(users, metadata_file=USERS_FILE)
+    refresh_authorized_keys(users, sftp_group)
     msg = log_flash({
         'message': f'Revoked user {username}\'s access to {sftp_group}.',
         'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
@@ -348,11 +367,19 @@ def cmd_users_deny(username, sftp_group):
 
 @app.route('/users/delete/<username>/', methods=['POST'])
 def cmd_users_delete(username):
+    users = load_metadata(metadata_file=USERS_FILE)
+    for sftp_group in users[username]['groups']:
+        refresh_authorized_keys(users, sftp_group)
+    del users[username]
+    for ext in ['pfx', 'ssh', 'ssh.pub']:
+        path = os.path.join(CRYPT_ROOT, 'keys', f'{username}.{ext}')
+        if os.path.exists(path):
+            os.remove(path)
+    save_metadata(users, metadata_file=USERS_FILE)
     msg = log_flash({
         'message': f'Deleted user {username}.',
         'action': 'user_delete', 'username': username,
     })
-    log_flash(f'Deleted user {username}.')
     return redirect('/users')
 
 def create_https_client_cert(username, real_name):
@@ -377,7 +404,7 @@ def create_https_client_cert(username, real_name):
 # Shell out to ssh-keygen to generate an ssh key for a new user, and return the
 # relative path to the key.
 def create_ssh_key(username):
-    path = f'{username}.ssh.txt'
+    path = f'{username}.ssh'
     full_path = os.path.join(CRYPT_ROOT, 'keys', path)
     stdout = shell([
         'ssh-keygen', '-t', 'rsa', '-m', 'PEM', 
@@ -385,7 +412,7 @@ def create_ssh_key(username):
         '-C', f'{username}-{datetime.datetime.now().strftime("%Y-%m-%d")}',
         '-N', ''
     ]).stdout
-    log_flash(stdout)
+    log_silent(stdout)
     # You're not supposed to do this with SSH keys, but in this case, we want
     # to serve it over HTTP (to authorised administrators).
     stdout = shell(['chmod', 'o+r', full_path])
