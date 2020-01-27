@@ -8,7 +8,7 @@ fi
 if [[ "$1" == "-r" ]]; then $extra_flag="-r"; fi
 
 journalctl $extra_flag -u nginx -u gunicorn -u sshd -u internal-sftp -o json \
-  --output-fields=UNIT,MESSAGE,SYSLOG_IDENTIFIER | jq -c '
+  -n 500 --output-fields=UNIT,MESSAGE,SYSLOG_IDENTIFIER | jq -c '
 
     # These functions attempt to get something useful out of a string, and fail
     # with a null.
