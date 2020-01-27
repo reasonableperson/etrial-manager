@@ -10,7 +10,7 @@
 Description=encrypted storage passphrase
 
 [Path]
-PathExists=/tmp/crypt.key
+PathChanged=/tmp/crypt.key
 Unit=gocryptfs.service
 
 [Install]

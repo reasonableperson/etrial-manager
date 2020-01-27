@@ -7,7 +7,7 @@ After=network.target
 Group=systemd-journal
 ExecStartPre=-useradd -m etrial
 ExecStartPre=-mkdir -p /crypt
-ExecStartPre=-chown etrial:etrial /crypt
+ExecStartPre=-chown root:etrial /crypt
 WorkingDirectory=/var/lib/etrial
 ExecStart=/usr/bin/gunicorn --user etrial --reload \
   --reload-extra-file templates/base.html  \

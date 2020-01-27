@@ -21,17 +21,15 @@ User=etrial
 RemainAfterExit=yes
 PermissionsStartOnly=true
 
-ExecStartPre=mkdir /crypt
+ExecStartPre=mkdir -p /crypt
 ExecStartPre=chown root:etrial /crypt
-ExecStartPre=chmod 770 /crypt
+ExecStartPre=chmod 755 /crypt
 ExecStartPre=gocryptfs -passfile /tmp/crypt.key -allow_other /home/etrial/crypt /crypt
+ExecStartPre=rm /tmp/crypt.key
 ExecStart=touch /crypt/documents.toml.txt
 ExecStart=touch /crypt/users.toml.txt
 ExecStart=mkdir -p /crypt/store /crypt/judge/Documents /crypt/jury/Documents /crypt/witness/Documents
 
-# Once /crypt is mounted, we can delete the key from /tmp.
-
-ExecStartPost=rm /tmp/crypt.key
 
 # If we are mounting /crypt for the first time, there will be HTTPS client
 # authentication credentials in /tmp left over from configure-nginx.sh. Move
@@ -39,8 +37,8 @@ ExecStartPost=rm /tmp/crypt.key
 # be used to add new HTTPS users.
 
 ExecStartPost=-mkdir -p /crypt/keys
-ExecStartPost=-mv /tmp/client.key /crypt/keys
-ExecStartPost=-mv /tmp/client.crt /crypt/keys
+ExecStartPost=-cp /var/lib/etrial/client.key /crypt/keys
+ExecStartPost=-cp /etc/nginx/client.crt /crypt/keys
 ExecStartPost=-chown -R etrial:etrial /crypt/keys
 
 # This complicated bind mount hack is unfortunately needed to get useful logs
@@ -53,11 +51,10 @@ ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/jury/dev/log
 ExecStartPost=systemd-mount -o bind /run/systemd/journal /crypt/witness/dev/journal
 ExecStartPost=-ln -s /crypt/judge/dev/journal/dev-log /crypt/witness/dev/log
 
-ExecStopPost=-systemd-umount /crypt/judge/dev/journal
-ExecStopPost=-systemd-umount /crypt/jury/dev/journal
-ExecStopPost=-systemd-umount /crypt/witness/dev/journal
-ExecStopPost=-fusermount -u /crypt
-ExecStopPost=-rm -r /crypt
+ExecStopPre=systemd-umount /crypt/judge/dev/journal
+ExecStopPre=systemd-umount /crypt/jury/dev/journal
+ExecStopPre=systemd-umount /crypt/witness/dev/journal
+ExecStopPre=fusermount -uz /crypt
 
 [Install]
 RequiredBy=sshd.service
