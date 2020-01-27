@@ -49,19 +49,32 @@ def refresh_hardlinks(documents, user_group):
         published or recalled, and add or remove hardlinks in the SFTP chroots
         accordingly. """
     user_dir = f'/crypt/{user_group}/Documents'
-    existing_hardlinks = os.listdir(user_dir)
+    log_silent(f'Refreshing hardlinks in /crypt/{user_group}/Documents.')
+    existing_hardlinks = os.listdir(user_dir) # names only, no path
     for _hash, document in documents.items():
         source = os.path.join(CRYPT_ROOT, 'store', _hash)
         destination = os.path.join(user_dir, document['title'])
+        # If the document is supposed to be published but there's no existing
+        # hardlink, create one.
         if user_group in document['groups']:
-            if document['title'] not in existing_hardlinks:
-                # These documents have been newly published
+            if not os.path.exists(destination):
                 os.link(source, destination)
                 log_silent({'action': 'link', 'source': source, 'destination': destination})
-        # These documents have been newly recalled
-        elif document['title'] in existing_hardlinks:
+            else: existing_hardlinks.remove(document['title'])
+        # If there is a hardlink but the document isn't supposed to be published,
+        # remove the hardlink.
+        elif os.path.exists(destination):
             os.remove(destination)
+            existing_hardlinks.remove(document['title'])
             log_silent({'action': 'unlink', 'destination': destination})
+    # If there is a hardlink that didn't get accounted for by the previous two
+    # cases (and thus removed from existing_hardlinks), remove it now, because
+    # the document itself was deleted.
+    for link in existing_hardlinks:
+        destination = os.path.join(user_dir, link) 
+        os.remove(destination)
+        log_silent({'action': 'unlink', 'destination': destination})
+
 
 def refresh_authorized_keys(users, sftp_group):
     """ Find the set of users who are authorised to access a particular Unix
@@ -293,6 +306,8 @@ def cmd_documents_delete(_hash):
             'action': 'delete', 'hash': _hash
         }, logging.WARNING)
         del metadata[_hash]
+        for user_group in ['judge', 'jury', 'witness']:
+            refresh_hardlinks(metadata, user_group)
         save_metadata(metadata)
         return json.dumps(msg), 200
     else:
