@@ -50,11 +50,19 @@ document.addEventListener('DOMContentLoaded', function () {
     newCell.appendChild(progressIndicator)
 
     var req = new XMLHttpRequest()
-    req.upload.addEventListener('load', () => { window.location = '?reverse' })
+
+    // Note that this listener is on the upload property, not the XHR itself
+    // -- it's used to update the progress indicator
     req.upload.addEventListener('progress', (e) => {
       progressIndicator.style.width = e.loaded / e.total * 100 + '%'
     })
-    req.open('POST', '/upload?filename=' + encodeURIComponent(file.name), true)
+
+    // This event isn't fired until the whole request is finished.
+    req.addEventListener('load', () => {
+      if (req.status == 200) window.location = '?reverse'
+      else console.error(req.response)
+    })
+    req.open('POST', '/documents/add?filename=' + encodeURIComponent(file.name), true)
     req.send(file)
   }
 
