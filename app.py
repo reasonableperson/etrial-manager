@@ -245,6 +245,7 @@ def cmd_documents_upload():
 
 @app.route('/documents/grant/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_publish(_hash, user_group):
+    assert user_group in ['judge', 'jury', 'witness']
     metadata = load_metadata()
     doc = metadata[_hash]
     msg = log_flash({
@@ -252,14 +253,16 @@ def cmd_documents_publish(_hash, user_group):
         'action': 'publish', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     })
-    if 'publish' not in metadata[_hash]: metadata[_hash]['publish'] = []
-    metadata[_hash][user_group] = True
+    if 'groups' not in metadata[_hash]: metadata[_hash]['groups'] = []
+    if user_group not in metadata[_hash]['groups']:
+        metadata[_hash]['groups'].append(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200
 
 @app.route('/documents/deny/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_recall(_hash, user_group):
+    assert user_group in ['judge', 'jury', 'witness']
     metadata = load_metadata()
     doc = metadata[_hash]
     msg = log_flash({
@@ -267,7 +270,7 @@ def cmd_documents_recall(_hash, user_group):
         'action': 'recall', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     }, logging.WARNING)
-    del metadata[_hash][user_group]
+    if user_group in doc['groups']: doc['groups'].remove(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
     return msg, 200

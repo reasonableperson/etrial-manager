@@ -46,14 +46,14 @@
         <strong>{{ row_data.identifier }}</strong>
       </td><td class="matrix edit">edit or assign</td>
       <td data-col="title">
-        <a href="/store/{{ hash }}">{{ row_data.title }}</a>
+        <a href="/store/{{ row_hash }}">{{ row_data.title }}</a>
       </td><td class="matrix edit">edit</td>
       <td class="added">
         <span class="date">{{ row_data.added | localise | long_date }}</span><br>
         <span class="time">{{ row_data.added | localise | long_time }}</span>
         <span class="tz">{{ row_data.added | localise | tz }}</span>
       </td>
-      {{ matrix_row('documents', row_hash, row_data.status) }}
+      {{ matrix_row('documents', row_hash, row_data.groups) }}
     </tr>
   {% endfor %}
   {% if not documents %}
