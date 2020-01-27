@@ -50,7 +50,10 @@
         {% endif %}
       </td>
       <!-- SSH key column -->
-      <td class="key ssh"><a href="#">get key</a></td>
+      <td class="key ssh">{% if user.key %}
+        <a href="/keys/{{ login }}.ssh.txt">get key</a>
+      {% endif %}</td>
+      <!-- Standard matrix columns -->
       {{ matrix_row('settings', login, user.groups) }}
     </tr>
     {% endfor %}

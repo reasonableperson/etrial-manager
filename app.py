@@ -69,42 +69,37 @@ def get_user_cert(username):
     cert_path = f'/crypt/keys/{username}.pfx'
     return cert_path if os.path.exists(cert_path) else None
 
-def get_current_user(full_list=False):
-    """ Return the name of the current web interface user, based on their
-        SSL fingerprint. This requires access to the user list, which is
-        stored in /crypt. This function will throw FileNotFoundError if it is
-        called when /crypt is not mounted. """
+def get_current_user():
+    """ Return the metadata for the current web interface user, based on their
+        SSL fingerprint, and update their last seen time. """
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
     real_name = re.search('CN=([^,]*),', dn).group(1)
+    # If /crypt is not mounted, just trust the real name provided in the
+    # HTTPS client certificate.
     if not os.path.exists(USERS_FILE):
         return {'real_name': real_name}
-    else:
-        # determine username from realname
-        users = load_metadata(metadata_file=USERS_FILE)
-        matches = [k for k, v in users.items() if 'name' in v and v['name'] == real_name]
-        print(matches)
-        # if the current user's real name is already in the USERS_FILE,
-        if len(matches) == 1:
-            username = matches[0]
-            # update their last seen time.
-            users[username]['seen'] = now()
-        else: # if the user cannot be uniquely matched to the USERS_FILE,
-            username = real_name.split(' ')[0].lower()
-            # create an entry in the USERS_FILE
-            users[username] = {
-                'fingerprint': fingerprint,
-                'real_name': real_name,
-                'seen': now(),
-                'added': None,
-                'groups': ['admin'],
-            } # and save it
-            save_metadata(users, metadata_file=USERS_FILE)
-        # regardless of whether the current (web) user was extracted from the
-        # USERS_FILE or generated for the first time, return the user's metadata.
-        # At this point, since we loaded the thing anyway, we might as well
-        # return the whole thing if the caller passes full_list=True.
-        return users if full_list else users[username]
+    # Otherwise, load the users file, and look for the current user.
+    users = load_metadata(metadata_file=USERS_FILE)
+    matches = [k for k, v in users.items() if 'real_name' in v and v['real_name'] == real_name]
+    username = matches[0] if len(matches) == 1 else None
+    # If they're not in there, this is probably an initial login -- bootstrap
+    # the user file with this new user.
+    if not username:
+        username = real_name.split(' ')[0].lower()
+        users[username] = {
+            'fingerprint': fingerprint,
+            'real_name': real_name,
+            'seen': now(),
+            'added': None,
+            'groups': ['admin'],
+        }
+        save_metadata(users, metadata_file=USERS_FILE)
+    else: # Otherwise, this is a known user. Update their last seen time.
+        users[username]['seen'] = now()
+    # Save changes to the users file and return.
+    save_metadata(users, metadata_file=USERS_FILE)
+    return users[username]
 
 # Logging
 
@@ -219,7 +214,7 @@ def page_users():
     df = shell(['df', '-B', '1', '/']).stdout.split('\n')[1].split()
     crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).stdout.split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
-    return render_template('users.html', users=get_current_user(full_list=True), fsdata=fsdata)
+    return render_template('users.html', users=load_metadata(metadata_file=USERS_FILE), fsdata=fsdata)
 
 # Document commands
 
@@ -253,7 +248,6 @@ def cmd_documents_publish(_hash, user_group):
         'action': 'publish', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     })
-    if 'groups' not in metadata[_hash]: metadata[_hash]['groups'] = []
     if user_group not in metadata[_hash]['groups']:
         metadata[_hash]['groups'].append(user_group)
     refresh_hardlinks(metadata, user_group)
@@ -300,7 +294,7 @@ def cmd_documents_delete(_hash):
 @app.route('/users/add', methods=['POST'])
 def cmd_users_add():
     real_name = request.form['name']
-    users = get_current_user(full_list=True)
+    users = load_metadata(metadata_file=USERS_FILE)
     if real_name is not None and real_name != '':
         username = real_name.split(' ')[0].lower()
         users[username] = {
@@ -308,10 +302,14 @@ def cmd_users_add():
             'seen': now(),
             'added': now(),
         }
+
+        # generate http client certificate for user
         stdout = create_https_client_cert(username, real_name)
         log_flash(stdout)
         users[username]['passphrase'] = stdout[-1]
         users[username]['cert'] = f'{username}.pfx'
+
+        # generate ssh key for user
         users[username]['key'] = create_ssh_key(username)
 
         #users[username]['groups'] = ['admin']
@@ -320,8 +318,40 @@ def cmd_users_add():
         log_flash(f'That\'s not a valid username.')
     return redirect('/users')
 
+@app.route('/users/grant/<username>/<sftp_group>', methods=['POST'])
+def cmd_users_grant(username, sftp_group):
+    assert sftp_group in ['judge', 'jury', 'witness']
+    users = load_metadata(metadata_file=USERS_FILE)
+    log_flash(users[username]['groups'])
+    if sftp_group not in users[username]['groups']:
+        users[username]['groups'].append(sftp_group)
+        log_flash(f"appended! f{users[username]['groups']}")
+    save_metadata(users, metadata_file=USERS_FILE)
+    msg = log_flash({
+        'message': f'Granted user {username} access to {sftp_group}.',
+        'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
+    })
+    return msg, 200
+
+@app.route('/users/deny/<username>/<sftp_group>', methods=['POST'])
+def cmd_users_deny(username, sftp_group):
+    assert sftp_group in ['judge', 'jury', 'witness']
+    users = load_metadata(metadata_file=USERS_FILE)
+    if sftp_group in users[username]['groups']:
+        users[username]['groups'].remove(sftp_group)
+    save_metadata(users, metadata_file=USERS_FILE)
+    msg = log_flash({
+        'message': f'Revoked user {username}\'s access to {sftp_group}.',
+        'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
+    })
+    return msg, 200
+
 @app.route('/users/delete/<username>/', methods=['POST'])
 def cmd_users_delete(username):
+    msg = log_flash({
+        'message': f'Deleted user {username}.',
+        'action': 'user_delete', 'username': username,
+    })
     log_flash(f'Deleted user {username}.')
     return redirect('/users')
 
@@ -344,15 +374,21 @@ def create_https_client_cert(username, real_name):
     # is an admin or not
     return script_result.stdout.split('\n')
 
+# Shell out to ssh-keygen to generate an ssh key for a new user, and return the
+# relative path to the key.
 def create_ssh_key(username):
     path = f'{username}.ssh.txt'
+    full_path = os.path.join(CRYPT_ROOT, 'keys', path)
     stdout = shell([
         'ssh-keygen', '-t', 'rsa', '-m', 'PEM', 
-        '-f', os.path.join(CRYPT_ROOT, 'keys', path),
+        '-f', full_path,
         '-C', f'{username}-{datetime.datetime.now().strftime("%Y-%m-%d")}',
         '-N', ''
     ]).stdout
     log_flash(stdout)
+    # You're not supposed to do this with SSH keys, but in this case, we want
+    # to serve it over HTTP (to authorised administrators).
+    stdout = shell(['chmod', 'o+r', full_path])
     return path
 
 # Template utilities

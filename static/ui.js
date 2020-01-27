@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // backend request by inspecting the clicked cell's data attributes.
   const handleMatrix = async function (e) {
     // don't do anything if the handler is fired by something other than a <td>
-    if (e.target.tagName != "TD") return
+    if (e.target.tagName != "TD" || !e.target.classList.contains("matrix")) return
     const d = e.target.dataset
     const url = [window.location.pathname, d.action, d.row, d.col].join('/')
     console.log(url)
