@@ -272,7 +272,7 @@ def cmd_documents_recall(_hash, user_group):
     save_metadata(metadata)
     return msg, 200
 
-@app.route('/documents/delete/<_hash>', methods=['POST'])
+@app.route('/documents/delete/<_hash>/', methods=['POST'])
 def cmd_documents_delete(_hash):
     metadata = load_metadata()
     user = get_current_user()
