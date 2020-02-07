@@ -1,0 +1,2 @@
+# Standalone server configuration guide
+

@@ -12,92 +12,28 @@ court proceedings. The system can be deployed either in a container on an
 internet-connected host server running Arch Linux, or on a Raspberry Pi
 connected to a local wireless network in the courtroom itself.
 
-# Container-based installation
+# Design
 
-First, create a a new directory on your host system and use `pacstrap` to
-install Arch Linux in it along with `etrial-manager`'s dependencies:
+This software is designed to run in two modes:
 
-    CONTAINER_ROOT=/var/lib/machines/etrial
-    mkdir -p $CONTAINER_ROOT/crypt
-    pacstrap -c $CONTAINER_ROOT base \
-      nginx gocryptfs gunicorn jq man openssh sshguard pwgen vim \
-      python-dateutil python-flask python-toml
+* **Internet mode**, in which the application runs on a VM or container running
+  Ubuntu Linux, which has ports 80 and 443 exposed to the internet. Because the
+  same IP address may be reused to support multiple cases in internet mode,
+  multiple instances of the Flask application may be run behind a single nginx
+  instance. This option is easier to deploy, but requires a reliable internet
+  connection and offers less physical security.
 
-Now, create a drop-in folder for the `systemd-nspawn` template unit (this
-should already be installed if you use a recent version of `systemd`). Put
-`config/nspawn-etrial.service.conf` in there to give your container a MACVLAN
-interface, disable user namespacing, and give it access to the host OS's FUSE
-module. (We need to use a service, rather than just invoking the container
-directly with `systemd-nspawn` or `machinectl`, so that we can use the
-`DeviceAllow=` directive and ensure that the container starts up with the host.)
+* **Standalone mode**, in which the application runs on a laptop running Ubuntu
+  Linux, which also acts as a DHCP server, DNS server and (optionally) Internet
+  router using an attached USB LTE modem. Nearby users connect to a wireless
+  network broadcast by an attached UniFi AC PRO.
 
-    HOST_SYSTEMD_DIR=/etc/systemd
-    REPO_DIR=~scott/git/etrial
-    mkdir -p $HOST_SYSTEMD_DIR/system/systemd-nspawn@etrial.service.d
-    ln -s $REPO_DIR/config/nspawn-etrial.service.conf \
-      $HOST_SYSTEMD_DIR/system/systemd-nspawn@etrial.service.d
+# Security
 
-Configure the container's network interface with the custom MAC address
-`4a:f0:e5:e2:be:ef`, and configure it to ask your local DHCP server for an IP
-and DNS resolver:
+An earlier version of this software featured encryption support. This was
+implemented in order to support deployment on a Raspberry Pi (which would need
+to boot into an unencrypted OS without exposing encrypted user data). This added
+significant complexity.
 
-    ln -s /var/lib/etrial/config/macvlan.network \
-      $CONTAINER_ROOT/etc/systemd/network
-    ln -s /usr/lib/systemd/system/systemd-networkd.service \
-      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
-    ln -s /usr/lib/systemd/system/systemd-resolved.service \
-      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
-
-Configure the container's sshd config to disable almost everything, listen on
-a custom port, and lock SFTP users into a chroot jail:
-
-    mkdir $CONTAINER_ROOT/etc/systemd/system/sshd.service.d
-    ln -s /var/lib/etrial/config/sshd.service.d.conf \
-      $CONTAINER_ROOT/etc/systemd/system/sshd.service.d/require-gocryptfs.conf
-
-Configure the encrypted filesystem service:
-
-    ln -s /var/lib/etrial/config/gocryptfs.path \
-      $CONTAINER_ROOT/etc/systemd/system/gocryptfs.path
-    ln -s /etc/systemd/system/gocryptfs.path \
-      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/gocryptfs.path
-    ln -s /var/lib/etrial/config/gocryptfs.service \
-      $CONTAINER_ROOT/etc/systemd/system/gocryptfs.service
-
-Install and enable the gunicorn service:
-
-    ln -s /var/lib/etrial/config/gunicorn.service \
-      $CONTAINER_ROOT/etc/systemd/system/gunicorn.service
-    ln -s /etc/systemd/system/gunicorn.service \
-      $CONTAINER_ROOT/etc/systemd/system/multi-user.target.wants/gunicorn.service
-
-Configure nginx, locking it down to users with a valid client certificate only,
-and generate a certificate bundle to bootstrap your access to the web interface:
-
-    $REPO_DIR/scripts/configure-nginx.sh \
-      /etc/letsencrypt/live/sjy.id.au/privkey.pem \
-      /etc/letsencrypt/live/sjy.id.au/cert.pem \
-      $CONTAINER_ROOT/etc/nginx
-
-Enable the container to ensure that it automatically starts on the next reboot,
-and start it immediately:
-
-    systemctl enable systemd-nspawn@etrial
-    systemctl start systemd-nspawn@etrial
-
-You should have a file in the current directory called `scott.pfx` which can
-be imported into your browser to access the web interface which is now running
-on the IP address assigned to your container.
-
-You'll also have `client.key`, which is the CA key used to authorise new HTTP
-users. If you don't plan on adding any other administrators, simply delete it.
-Otherwise, once you've created an encrypted volume in the web app, upload
-`client.key` to enable this functionality. (It would be unsafe to leave this
-key on the cleartext filesystem we have set up so far.)
-
-## Troubleshooting
-
-If you want a shell on the container, run the following on the host:
-
-    for i in {0..9}; do echo pts/$i >> /var/lib/machines/etrial/etc/securetty; done
-    machinectl shell root@etrial
+The same outcome can be achieved by using a laptop with full disk encryption,
+instead of a Raspberry Pi, as the server.
