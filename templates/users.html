@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<h2>Users</h2>
+<h2>Administrators</h2>
 
 <table id="users">
   <thead>
@@ -14,11 +14,6 @@
       <th>Added</th>
       <th>Seen</th>
       <th>HTTPS</th>
-      <th>SSH</th>
-      <th>Judge</th>
-      <th>Jury</th>
-      <th>Witness</th>
-      <th>Delete</th>
     </tr>
   </thead>
   <tbody>
@@ -49,12 +44,6 @@
         <div class="passphrase">{{ user.passphrase }}</div>
         {% endif %}
       </td>
-      <!-- SSH key column -->
-      <td class="key ssh">{% if user.key %}
-        <a href="/keys/{{ login }}.ssh">get key</a>
-      {% endif %}</td>
-      <!-- Standard matrix columns -->
-      {{ matrix_row('settings', login, user.groups) }}
     </tr>
     {% endfor %}
   </tbody>
@@ -67,7 +56,28 @@
   </td>
 </form>
 
-<h2>Filesystem</h2>
+<h2>WebDAV (iPad) users</h2>
+
+<table id="dav-users">
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>WebDAV URL</th>
+      <th>Password</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for username, password in dav_users %}
+    <tr>
+      <td>{{ username }}</td>
+      <td>https://{{ domain }}/{{ username }}</td>
+      <td>{{ password }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Storage</h2>
 
 <table>
   <tr>
