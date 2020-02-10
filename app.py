@@ -48,7 +48,7 @@ def save_metadata(metadata, metadata_file=METADATA_FILE):
 
 def refresh_hardlinks(documents, user_group):
     """ For each document in the documents file, check whether it has been newly
-        published or recalled, and add or remove hardlinks in the SFTP chroots
+        published or recalled, and add or remove hardlinks in the WebDAV dir
         accordingly. """
     user_dir = os.path.join(WEBDAV_ROOT, user_group)
     log_silent(f'Refreshing hardlinks in {user_dir}.')
@@ -77,11 +77,11 @@ def refresh_hardlinks(documents, user_group):
         os.remove(destination)
         log_silent({'action': 'unlink', 'destination': destination})
 
-def refresh_authorized_keys(users, sftp_group):
+def refresh_authorized_keys(users, dav_group):
     """ Find the set of users who are authorised to access a particular Unix
         account, and write a suitable authorized_keys file for the account. """
-    authorized_users = [k for k, v in users.items() if sftp_group in v['groups'] and 'key' in v]
-    authorized_keys_file = os.path.join(DATA_ROOT, 'keys', f'{sftp_group}.authorized')
+    authorized_users = [k for k, v in users.items() if dav_group in v['groups'] and 'key' in v]
+    authorized_keys_file = os.path.join(DATA_ROOT, 'keys', f'{dav_group}.authorized')
     os.remove(authorized_keys_file)
     log_silent(f"Clearing {authorized_keys_file}.")
     with open(authorized_keys_file, 'w') as fd:
@@ -185,9 +185,12 @@ def page_log():
 @app.route('/users')
 def page_users():
     df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
+    domain = shell(['grep', '-oP', r'server_name +\K([^;]*)', '/etc/nginx/sites-enabled/default']).strip()
+    with open(os.path.join(DATA_ROOT, 'dav.htpasswd.clear')) as fd:
+        dav_users = [s.split(':') for s in fd.read().split()]
     crypt_used = int(shell(['du', '-b', '-s', DATA_ROOT], check=False).split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
-    return render_template('users.html', users=load_metadata(metadata_file=USERS_FILE), fsdata=fsdata)
+    return render_template('users.html', users=load_metadata(metadata_file=USERS_FILE), fsdata=fsdata, dav_users=dav_users, domain=domain)
 
 # Document commands
 
@@ -296,38 +299,38 @@ def cmd_users_add():
         log_flash(f'That\'s not a valid username.')
     return redirect('/users')
 
-@app.route('/users/grant/<username>/<sftp_group>', methods=['POST'])
-def cmd_users_grant(username, sftp_group):
-    assert sftp_group in ['judge', 'jury', 'witness']
+@app.route('/users/grant/<username>/<dav_group>', methods=['POST'])
+def cmd_users_grant(username, dav_group):
+    assert dav_group in ['judge', 'jury', 'witness']
     users = load_metadata(metadata_file=USERS_FILE)
-    if sftp_group not in users[username]['groups']:
-        users[username]['groups'].append(sftp_group)
+    if dav_group not in users[username]['groups']:
+        users[username]['groups'].append(dav_group)
     save_metadata(users, metadata_file=USERS_FILE)
-    refresh_authorized_keys(users, sftp_group)
+    refresh_authorized_keys(users, dav_group)
     msg = log_flash({
-        'message': f'Granted user {username} access to {sftp_group}.',
-        'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
+        'message': f'Granted user {username} access to {dav_group}.',
+        'action': 'user_grant', 'username': username, 'dav_group': dav_group
     })
     return json.dumps(msg), 200
 
-@app.route('/users/deny/<username>/<sftp_group>', methods=['POST'])
-def cmd_users_deny(username, sftp_group):
-    assert sftp_group in ['judge', 'jury', 'witness']
+@app.route('/users/deny/<username>/<dav_group>', methods=['POST'])
+def cmd_users_deny(username, dav_group):
+    assert dav_group in ['judge', 'jury', 'witness']
     users = load_metadata(metadata_file=USERS_FILE)
-    if sftp_group in users[username]['groups']:
-        users[username]['groups'].remove(sftp_group)
+    if dav_group in users[username]['groups']:
+        users[username]['groups'].remove(dav_group)
     save_metadata(users, metadata_file=USERS_FILE)
-    refresh_authorized_keys(users, sftp_group)
+    refresh_authorized_keys(users, dav_group)
     msg = log_flash({
-        'message': f'Revoked user {username}\'s access to {sftp_group}.',
-        'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
-    })
+        'message': f'Revoked user {username}\'s access to {dav_group}.',
+        'action': 'user_grant', 'username': username, 'dav_group': dav_group
+        })
     return json.dumps(msg), 200
 
 @app.route('/users/delete/<username>/', methods=['POST'])
 def cmd_users_delete(username):
     users = load_metadata(metadata_file=USERS_FILE)
-    for sftp_group in users[username]['groups']:
+    for dav_group in users[username]['groups']:
         refresh_authorized_keys(users, sftp_group)
     del users[username]
     path = os.path.join(DATA_ROOT, 'keys', f'{username}.pfx')
