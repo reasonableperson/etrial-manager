@@ -56,21 +56,6 @@ section table .identifier,
 section table .tz { font-size: 0.7em }
 section table .added, .seen { width: 8em; white-space: nowrap; text-align: right }
 
-section table .tooltip { position: relative; cursor: pointer }
-section table .tooltip:hover { background: #e1d1f0; transition: background 0.3s ease-out }
-section table .tooltip:hover .tip {
-  opacity: 0.9; transition: opacity 0.3s ease-out;
-  z-index: 1; cursor: auto
-}
-section table .tooltip .tip {
-  z-index: -1; min-height: 100%;
-  padding: 1em;
-  color: black; font-size: 0.9em; font-weight: normal;
-  background: #e1d1f0; 
-  opacity: 0; transition: opacity 0.3s ease-out;
-  position: absolute; top: 0; left: 100%
-}
-
 /* Encrypted page */
 
 #encrypted code { display: block; font-size: 200%; margin-bottom: 0.5em }

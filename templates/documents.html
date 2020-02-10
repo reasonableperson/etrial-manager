@@ -40,8 +40,7 @@
   </thead><tbody>
   {% for row_hash, row_data in documents %}
     <tr data-rowId="{{ row_hash }}">
-      <td class="identifier tooltip">
-        <div class="tip">{{ row_hash }}</div>
+      <td class="identifier">
         <code>{{row_hash|truncate(9)|safe}}</code>
         <strong>{{ row_data.identifier }}</strong>
       </td><td class="matrix edit">edit or assign</td>

@@ -265,7 +265,7 @@ def cmd_documents_delete(_hash):
 
 # Users commands
 
-def create_user(real_name, generate_https=True, generate_ssh=True):
+def create_user(real_name, generate_https=True):
     username = real_name.split(' ')[0].lower()
     user = {
         'real_name': real_name,
@@ -278,8 +278,6 @@ def create_user(real_name, generate_https=True, generate_ssh=True):
         user['passphrase'] = stdout[-1]
         user['cert'] = f'{username}.pfx'
         user['groups'] = ['admin']
-    if generate_ssh:
-        user['key'] = create_ssh_key(username)
     return username, user
 
 @app.route('/users/add', methods=['POST'])
@@ -332,10 +330,9 @@ def cmd_users_delete(username):
     for sftp_group in users[username]['groups']:
         refresh_authorized_keys(users, sftp_group)
     del users[username]
-    for ext in ['pfx', 'ssh', 'ssh.pub']:
-        path = os.path.join(DATA_ROOT, 'keys', f'{username}.{ext}')
-        if os.path.exists(path):
-            os.remove(path)
+    path = os.path.join(DATA_ROOT, 'keys', f'{username}.pfx')
+    if os.path.exists(path):
+        os.remove(path)
     save_metadata(users, metadata_file=USERS_FILE)
     msg = log_flash({
         'message': f'Deleted user {username}.',
@@ -347,8 +344,6 @@ def create_https_client_cert(username, real_name):
     script_result = shell([
         os.path.join(CODE_ROOT, 'scripts', 'add-https-user.sh'),
         username, real_name,
-        os.path.join(DATA_ROOT, 'keys', 'client.crt'),
-        os.path.join(DATA_ROOT, 'keys', 'client.key'),
         os.path.join(DATA_ROOT, 'keys')
     ], check=False)
     # if we don't check the shell() call, we can log stderr before raising
@@ -360,23 +355,6 @@ def create_https_client_cert(username, real_name):
     # we'll use the existence of this passphrase to decide whether the user
     # is an admin or not
     return script_result.stdout.split('\n')
-
-# Shell out to ssh-keygen to generate an ssh key for a new user, and return the
-# relative path to the key.
-def create_ssh_key(username):
-    path = f'{username}.ssh'
-    full_path = os.path.join(DATA_ROOT, 'keys', path)
-    stdout = shell([
-        'ssh-keygen', '-t', 'rsa', '-m', 'PEM', 
-        '-f', full_path,
-        '-C', f'{username}-{datetime.datetime.now().strftime("%Y-%m-%d")}',
-        '-N', ''
-    ])
-    log_silent(stdout)
-    # You're not supposed to do this with SSH keys, but in this case, we want
-    # to serve it over HTTP (to authorised administrators).
-    stdout = shell(['chmod', 'o+r', full_path])
-    return path
 
 # Template utilities
 

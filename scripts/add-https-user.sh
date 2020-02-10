@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if (( $# != 3 )); then
-  echo "Usage: add-https-user.sh <username> <user-full-name> <ca-crt> <ca-key> <working-dir>"
+  echo "Usage: add-https-user.sh <username> <user-full-name> <working-dir>"
   exit 1
 fi
 
@@ -32,6 +32,11 @@ rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 # and generally it would be, but in this case it is necessary to allow the web
 # server to serve the key to an existing administrator.
 chmod o+r "$1.pfx"
+
+echo "[$1]
+real_name = \"$2\"
+seen = $(date -Iseconds)
+added = $(date -Iseconds)" >> /home/etrial/users.toml.txt
 
 # Delete unneeded artifacts.
 rm "$1.csr" "$1.key" "$1.crt"
