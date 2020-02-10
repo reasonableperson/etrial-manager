@@ -35,6 +35,8 @@ chmod o+r "$1.pfx"
 
 echo "[$1]
 real_name = \"$2\"
+cert = \"$1.pfx\"
+passphrase = \"$export_password\"
 seen = $(date -Iseconds)
 added = $(date -Iseconds)" >> /home/etrial/users.toml.txt
 

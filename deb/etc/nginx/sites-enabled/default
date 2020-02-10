@@ -9,7 +9,12 @@ server {
   ssl_client_certificate client.crt;
   ssl_verify_client      optional;
 
-  #location /keys { root /crypt; add_header Content-Disposition 'attachment'; }
+  location /keys {
+    if ($ssl_client_verify != SUCCESS) { return 403; break; }
+    root /home/etrial;
+    add_header Content-Disposition 'attachment';
+  }
+
   location /store {
     if ($ssl_client_verify != SUCCESS) { return 403; break; }
     root /home/etrial;

@@ -104,8 +104,6 @@ def get_current_user():
     fingerprint = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Fingerprint'))
     dn = urllib.parse.unquote(request.headers.get('X-Ssl-Client-Subject'))
     real_name = re.search('CN=([^,]*),', dn).group(1)
-    # If /crypt is not mounted, just trust the real name provided in the
-    # HTTPS client certificate.
     if not os.path.exists(USERS_FILE):
         return {'real_name': real_name}
     # Otherwise, load the users file, and look for the current user.
@@ -278,33 +276,14 @@ def cmd_documents_delete(_hash):
 
 # Users commands
 
-def create_user(real_name, generate_https=True):
-    username = real_name.split(' ')[0].lower()
-    user = {
-        'real_name': real_name,
-        'seen': now(),
-        'added': now(),
-    }
-    if generate_https:
-        stdout = create_https_client_cert(username, real_name)
-        log_silent(stdout)
-        user['passphrase'] = stdout[-1]
-        user['cert'] = f'{username}.pfx'
-        user['groups'] = ['admin']
-    return username, user
-
 @app.route('/users/add', methods=['POST'])
 def cmd_users_add():
     real_name = request.form['name']
     users = load_metadata(metadata_file=USERS_FILE)
     if real_name is not None and real_name != '':
-        try:
-            username, user = create_user(real_name)
-            users[username] = user
-            save_metadata(users, metadata_file=USERS_FILE)
-            log_flash(f'Created new user {username}.')
-        except:
-            log_flash(f'User creation error.', logging.ERROR)
+        username = real_name.split(' ')[0].lower()
+        stdout = create_https_client_cert(username, real_name)
+        log_flash(f'Created new user {username}.')
     else:
         log_flash(f'That\'s not a valid username.')
     return redirect('/users')
@@ -362,12 +341,11 @@ def create_https_client_cert(username, real_name):
     # if we don't check the shell() call, we can log stderr before raising
     # an exception if there was a failure
     log_silent(['stdout', script_result])
-    assert script_result.returncode == 0
 
     # the last line of the script's output contains the user's passphrase;
     # we'll use the existence of this passphrase to decide whether the user
     # is an admin or not
-    return script_result.stdout.split('\n')
+    return script_result.split('\n')
 
 # Template utilities
 
