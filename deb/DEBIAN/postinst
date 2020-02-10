@@ -23,11 +23,40 @@ if [ ! -f /etc/nginx/client.crt ]; then
   openssl req -new -x509 -days 3650 -subj $subj \
     -key /etc/nginx/client.key -out /etc/nginx/client.crt
 
-  # Call another script for bootstrapping the next user.
-
   echo "Creating admin.pfx certificate bundle ..."
   /usr/share/etrial-manager/scripts/add-https-user.sh admin "Default Administrator" /root
 fi
 
+# Add the Certbot repository if necessary; the version in Ubuntu LTS is too old.
+if [ ! -f /usr/bin/certbot ]; then
+  apt-get update
+  apt-get install software-properties-common
+  add-apt-repository ppa:certbot/certbot
+  apt-get update
+  apt-get install python-certbot-nginx
+fi
+# TODO: remove personal details
+certbot -n --nginx --domains demo.court.digital --agree-tos --email scott@sjy.id.au
+
+# Configure WebDAV for each user class.
+adduser etrial --disabled-password --gecos ''
+for user in judge jury witness; do
+  mkdir -p /home/etrial/dav/$user
+  chown etrial:etrial /home/etrial/dav/$user
+  chmod 755 /home/etrial/dav/$user
+done
+if [ ! -f /etc/nginx/dav.htpasswd ]; then
+  # Generate new passwords for WebDAV users.
+  touch /etc/nginx/dav.htpasswd
+  for user in judge jury witness; do
+    pass=$(pwgen -1 -n 12)
+    echo "$pass" | htpasswd -i /etc/nginx/dav.htpasswd "$user"
+    echo "$user:$pass"
+  done > /home/etrial/dav.htpasswd.clear
+fi
+
+systemctl daemon-reload
 systemctl enable etrial-manager
+systemctl stop etrial-manager etrial-davserver@judge etrial-davserver@jury etrial-davserver@witness
 systemctl start etrial-manager
+systemctl reload nginx

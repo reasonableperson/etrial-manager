@@ -1,0 +1,9 @@
+[Unit]
+Description=WebDAV server for user %i
+
+[Service]
+User=nobody
+ExecStart=/usr/bin/etrial-davserver %i
+
+[Install]
+WantedBy=machines.target

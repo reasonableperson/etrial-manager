@@ -24,9 +24,6 @@ nav a, nav a:visited { color: #3a0870; font-weight: bold; text-decoration: none 
 #submenu a { font-weight: normal; border-bottom: 1px #e1d1f0 solid }
 #submenu a:first-child { margin-left: auto; border-left: 1px #e1d1f0 solid }
 
-#lock:after { content: '🔓' }
-#lock:hover:after { content: '🔒' }
-
 /* Flashes */
 
 section #flashes {

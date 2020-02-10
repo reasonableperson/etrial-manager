@@ -29,10 +29,6 @@
       <div class="text">Users</div>
     </a>
 
-    <a id="lock" href="/lock"
-      title="Lock this server, requiring the decryption key to continue use">
-    </a>
-
     {% endif %}
   </nav>
 
@@ -44,7 +40,7 @@
   {% if messages %}
     <ul id="flashes">
     {% for category, msg in messages %}
-    <li class="{{ category }}">{{ msg.message }}</li>
+    <li class="{{ category }}">{{ msg.message | safe }}</li>
     {% endfor %}
     </ul>
   {% endif %}

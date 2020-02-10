@@ -17,26 +17,28 @@ from flask import Flask, flash, g, render_template, redirect, request
 # Configuration
 
 CODE_ROOT = os.path.dirname(os.path.realpath(__file__))
-CRYPT_ROOT = '/crypt'
+DATA_ROOT = '/home/etrial'
+WEBDAV_ROOT = os.path.join(DATA_ROOT, 'dav')
 
-METADATA_FILE = os.path.join(CRYPT_ROOT, 'documents.toml.txt')
-USERS_FILE = os.path.join(CRYPT_ROOT, 'users.toml.txt')
+METADATA_FILE = os.path.join(DATA_ROOT, 'documents.toml.txt')
+USERS_FILE = os.path.join(DATA_ROOT, 'users.toml.txt')
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = b'_\xfd\xd9\xe53\x00\x8e\xbc\xa4\x14-\x97\x11\x0e&>'
+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 
 # Filesystem
 
 def shell(script_args, input=None, check=True):
     try:
-        return subprocess.run(script_args, capture_output=True,
-            check=check, input=input, encoding='utf-8')
+        return subprocess.check_output(script_args).decode('utf-8')
     except subprocess.CalledProcessError as e:
-        log_silent(e.output)
+        log_silent(e.output.decode('utf-8'))
         raise
 
 def load_metadata(metadata_file=METADATA_FILE):
+    if not os.path.exists(metadata_file):
+        return {}
     with open(metadata_file) as fd:
         return toml.load(fd)
 
@@ -48,11 +50,11 @@ def refresh_hardlinks(documents, user_group):
     """ For each document in the documents file, check whether it has been newly
         published or recalled, and add or remove hardlinks in the SFTP chroots
         accordingly. """
-    user_dir = f'/crypt/{user_group}/Documents'
-    log_silent(f'Refreshing hardlinks in /crypt/{user_group}/Documents.')
+    user_dir = os.path.join(WEBDAV_ROOT, user_group)
+    log_silent(f'Refreshing hardlinks in {user_dir}.')
     existing_hardlinks = os.listdir(user_dir) # names only, no path
     for _hash, document in documents.items():
-        source = os.path.join(CRYPT_ROOT, 'store', _hash)
+        source = os.path.join(DATA_ROOT, 'store', _hash)
         destination = os.path.join(user_dir, document['title'])
         # If the document is supposed to be published but there's no existing
         # hardlink, create one.
@@ -75,24 +77,23 @@ def refresh_hardlinks(documents, user_group):
         os.remove(destination)
         log_silent({'action': 'unlink', 'destination': destination})
 
-
 def refresh_authorized_keys(users, sftp_group):
     """ Find the set of users who are authorised to access a particular Unix
         account, and write a suitable authorized_keys file for the account. """
     authorized_users = [k for k, v in users.items() if sftp_group in v['groups'] and 'key' in v]
-    authorized_keys_file = os.path.join(CRYPT_ROOT, 'keys', f'{sftp_group}.authorized')
+    authorized_keys_file = os.path.join(DATA_ROOT, 'keys', f'{sftp_group}.authorized')
     os.remove(authorized_keys_file)
     log_silent(f"Clearing {authorized_keys_file}.")
     with open(authorized_keys_file, 'w') as fd:
         for u in authorized_users:
-            pubkey = open(os.path.join(CRYPT_ROOT, 'keys', f'{u}.ssh.pub')).read()
+            pubkey = open(os.path.join(DATA_ROOT, 'keys', f'{u}.ssh.pub')).read()
             log_silent(f"Writing {u}.ssh.pub to {authorized_keys_file}.")
             fd.write(pubkey)
 
 # Authentication
 
 def get_user_cert(username):
-    cert_path = f'/crypt/keys/{username}.pfx'
+    cert_path = os.path.join(DATA_ROOT, 'keys', f'{username}.pfx')
     return cert_path if os.path.exists(cert_path) else None
 
 def get_current_user():
@@ -150,62 +151,10 @@ def log_flash(msg, level=logging.INFO):
 
 @app.route('/')
 def page_home():
-    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     return redirect('/documents')
-
-def purge_cryptfs():
-    """ Unmounts /crypt and deletes ~etrial/crypt, permanently deleting all
-        user data. """
-    log_silent('Creating new encrypted volume.')
-    stdout = shell([
-        os.path.join(CODE_ROOT, 'scripts', 'create-gocryptfs.sh'), 'purge'
-    ]).stdout
-    key = stdout.split('\n')[0]
-    return render_template('encrypted.html', key=key)
-
-@app.route('/encrypted')
-def page_encrypted():
-    if os.path.exists(METADATA_FILE): return redirect('/')
-    if os.path.exists('/home/etrial/crypt'):
-        return render_template('encrypted.html')
-    else:
-        return purge_cryptfs()
-
-@app.route('/decrypt', methods=['POST'])
-def cmd_decrypt():
-    # if the metadata file already exists, you shouldn't be here
-    if (os.path.exists(METADATA_FILE)):
-        return redirect('/')
-    # if a key has been provided, try to decrypt with it
-    elif 'key' in request.form:
-        with open('/tmp/crypt.key', 'w') as fd:
-            fd.write(request.form['key'] + '\n')
-        time.sleep(0.5)
-        if os.path.exists(METADATA_FILE):
-            log_silent('Decrypted filesystem.')
-            return redirect('/documents')
-        else:
-            log_flash('Failed to decrypt filesystem.', logging.ERROR)
-            return redirect('/encrypted')
-    elif 'action' in request.form:
-        if request.form['action'] == 'delete all my data':
-            return purge_cryptfs()
-        else:
-            log_flash('You didn\'t seem sure enough. Nothing was done.', logging.ERROR)
-            return redirect('/encrypted')
-
-@app.route('/lock')
-def cmd_lock():
-    stdout = shell(['touch', '/tmp/crypt.lock']).stdout
-    log_flash('Server locked.')
-    time.sleep(0.5)
-    # this should, in turn, resolve to /encrypted, but if it doesn't, the user
-    # may at least realise that something is wrong
-    return redirect('/')
 
 @app.route('/documents')
 def page_documents():
-    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     # handle any sort field specified by the user
     sort = { 'field': request.args.get('sort'), 'reverse': request.args.get('reverse') }
     if sort['field'] not in ['added', 'identifier', 'title']:
@@ -222,12 +171,11 @@ def page_documents():
 
 @app.route('/log')
 def page_log():
-    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
     user = get_current_user()
 
     script = [os.path.join(CODE_ROOT, 'scripts', 'filtered-journal.sh')]
-    stdout = shell(script).stdout
+    stdout = shell(script)
     _json = [json.loads(l) for l in stdout.split('\n') if l != '']
 
     if not request.args.get('reverse') == '': _json.reverse()
@@ -236,9 +184,8 @@ def page_log():
 
 @app.route('/users')
 def page_users():
-    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
-    df = shell(['df', '-B', '1', '/']).stdout.split('\n')[1].split()
-    crypt_used = int(shell(['du', '-b', '-s', '/crypt'], check=False).stdout.split()[0])
+    df = shell(['df', '-B', '1', '/']).split('\n')[1].split()
+    crypt_used = int(shell(['du', '-b', '-s', DATA_ROOT], check=False).split()[0])
     fsdata = dict(total=int(df[1]), used=int(df[2]), crypt_used=crypt_used)
     return render_template('users.html', users=load_metadata(metadata_file=USERS_FILE), fsdata=fsdata)
 
@@ -246,14 +193,13 @@ def page_users():
 
 @app.route('/documents/add', methods=['POST'])
 def cmd_documents_upload():
-    if not os.path.exists(METADATA_FILE): return redirect('/encrypted')
     metadata = load_metadata()
     user = get_current_user()
     title = request.args.get('filename')
     h = hashlib.blake2b(digest_size=20)
     h.update(request.data)
     _hash = h.hexdigest()
-    with open(os.path.join(CRYPT_ROOT, 'store', _hash), 'wb') as fd:
+    with open(os.path.join(DATA_ROOT, 'store', _hash), 'wb') as fd:
         fd.write(request.data)
     metadata[_hash] = dict(title=title, added=now(), groups=[])
     save_metadata(metadata)
@@ -262,7 +208,7 @@ def cmd_documents_upload():
         'action': 'upload', 'title': title, 'hash': _hash,
         'size_mb': len(request.data)/10**6
     })
-    return msg, 200
+    return json.dumps(msg), 200
 
 @app.route('/documents/grant/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_publish(_hash, user_group):
@@ -278,7 +224,7 @@ def cmd_documents_publish(_hash, user_group):
         metadata[_hash]['groups'].append(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
-    return msg, 200
+    return json.dumps(msg), 200
 
 @app.route('/documents/deny/<_hash>/<user_group>', methods=['POST'])
 def cmd_documents_recall(_hash, user_group):
@@ -286,14 +232,14 @@ def cmd_documents_recall(_hash, user_group):
     metadata = load_metadata()
     doc = metadata[_hash]
     msg = log_flash({
-        'message': f'Recalled {doc["title"]} from {user_group}.',
+        'message': f'Recalled <b>{doc["title"]}</b> from <b>{user_group}</b>.',
         'action': 'recall', 'hash': _hash, 'title': doc['title'],
         'user_group': user_group
     }, logging.WARNING)
     if user_group in doc['groups']: doc['groups'].remove(user_group)
     refresh_hardlinks(metadata, user_group)
     save_metadata(metadata)
-    return msg, 200
+    return json.dumps(msg), 200
 
 @app.route('/documents/delete/<_hash>/', methods=['POST'])
 def cmd_documents_delete(_hash):
@@ -364,7 +310,7 @@ def cmd_users_grant(username, sftp_group):
         'message': f'Granted user {username} access to {sftp_group}.',
         'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
     })
-    return msg, 200
+    return json.dumps(msg), 200
 
 @app.route('/users/deny/<username>/<sftp_group>', methods=['POST'])
 def cmd_users_deny(username, sftp_group):
@@ -378,7 +324,7 @@ def cmd_users_deny(username, sftp_group):
         'message': f'Revoked user {username}\'s access to {sftp_group}.',
         'action': 'user_grant', 'username': username, 'sftp_group': sftp_group
     })
-    return msg, 200
+    return json.dumps(msg), 200
 
 @app.route('/users/delete/<username>/', methods=['POST'])
 def cmd_users_delete(username):
@@ -387,7 +333,7 @@ def cmd_users_delete(username):
         refresh_authorized_keys(users, sftp_group)
     del users[username]
     for ext in ['pfx', 'ssh', 'ssh.pub']:
-        path = os.path.join(CRYPT_ROOT, 'keys', f'{username}.{ext}')
+        path = os.path.join(DATA_ROOT, 'keys', f'{username}.{ext}')
         if os.path.exists(path):
             os.remove(path)
     save_metadata(users, metadata_file=USERS_FILE)
@@ -401,14 +347,13 @@ def create_https_client_cert(username, real_name):
     script_result = shell([
         os.path.join(CODE_ROOT, 'scripts', 'add-https-user.sh'),
         username, real_name,
-        os.path.join(CRYPT_ROOT, 'keys', 'client.crt'),
-        os.path.join(CRYPT_ROOT, 'keys', 'client.key'),
-        os.path.join(CRYPT_ROOT, 'keys')
+        os.path.join(DATA_ROOT, 'keys', 'client.crt'),
+        os.path.join(DATA_ROOT, 'keys', 'client.key'),
+        os.path.join(DATA_ROOT, 'keys')
     ], check=False)
     # if we don't check the shell() call, we can log stderr before raising
     # an exception if there was a failure
-    log_silent(['stdout', script_result.stdout])
-    log_silent(['stderr', script_result.stderr])
+    log_silent(['stdout', script_result])
     assert script_result.returncode == 0
 
     # the last line of the script's output contains the user's passphrase;
@@ -420,13 +365,13 @@ def create_https_client_cert(username, real_name):
 # relative path to the key.
 def create_ssh_key(username):
     path = f'{username}.ssh'
-    full_path = os.path.join(CRYPT_ROOT, 'keys', path)
+    full_path = os.path.join(DATA_ROOT, 'keys', path)
     stdout = shell([
         'ssh-keygen', '-t', 'rsa', '-m', 'PEM', 
         '-f', full_path,
         '-C', f'{username}-{datetime.datetime.now().strftime("%Y-%m-%d")}',
         '-N', ''
-    ]).stdout
+    ])
     log_silent(stdout)
     # You're not supposed to do this with SSH keys, but in this case, we want
     # to serve it over HTTP (to authorised administrators).
@@ -439,7 +384,7 @@ def create_ssh_key(username):
 def t_inject_user(): return dict(user=get_current_user())
 
 @app.context_processor
-def t_inject_crypt_root(): return dict(secure_path=CRYPT_ROOT)
+def t_inject_crypt_root(): return dict(secure_path=DATA_ROOT)
 
 def now(): return datetime.datetime.now(dateutil.tz.tzutc())
 @app.context_processor

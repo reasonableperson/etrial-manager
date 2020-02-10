@@ -87,8 +87,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (req.status == 200) {
         uploadCount = uploadCount - 1
         if (uploadCount == 0) window.location.reload()
+      } else {
+        console.error(req.status, req.response)
+        document.body.outerHTML = req.response
       }
-      else { console.error(req.response) }
     })
     req.open('POST', url, true)
     req.send(file)
@@ -104,8 +106,12 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log(url)
     var req = new XMLHttpRequest()
     req.addEventListener('load', function () {
-      if (req.status == 200) window.location.reload()
-      else console.error(req.response)
+      if (req.status == 200) {
+        window.location.reload()
+      } else {
+        console.error(req.response)
+        document.body.outerHTML = req.response
+      }
     })
     req.open('POST', url, true)
     req.send()

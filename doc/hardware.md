@@ -47,7 +47,7 @@ access to this repository for convenience:az
     ExecStart=
     ExecStart=/usr/bin/systemd-nspawn --keep-unit --boot --machine=etrial \
         --bind-ro=/home/scott/git/etrial:/var/lib/etrial --network-macvlan=eno1
-    ' > /etc/systemd/system/systemd-nspawn@etrial.service.d
+    ' > /etc/systemd/system/systemd-nspawn@etrial.service.d/macvlan.conf
 
 Enable the container so it starts on boot:
 

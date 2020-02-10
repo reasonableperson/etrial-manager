@@ -1,0 +1,21 @@
+[Unit]
+Description=etrial flask app
+Requires=nginx.service
+BindsTo=etrial-davserver@judge.service etrial-davserver@jury.service etrial-davserver@witness.service
+After=network.target
+
+[Service]
+Type=simple
+User=etrial
+Group=systemd-journal
+WorkingDirectory=/mnt/etrial-manager
+Environment=FLASK_APP=app.py
+Environment=FLASK_ENV=development
+Environment=FLASK_DEBUG=1
+Environment=LC_ALL=C.UTF-8
+Environment=LANG=C.UTF-8
+Environment=SECRET_KEY=$(pwgen -1 -n 20)
+ExecStart=/usr/bin/flask run
+
+[Install]
+WantedBy=multi-user.target

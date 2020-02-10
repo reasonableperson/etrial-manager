@@ -1,26 +1,41 @@
-#events { worker_connections 1024; }
-#http {
-  #include mime.types;
-  #types_hash_max_size 4096;
+# send all our logs to journald for fast processing
+access_log syslog:server=unix:/dev/log;
+error_log syslog:server=unix:/dev/log info;
 
-  # send all our logs to journald for fast processing
-  access_log syslog:server=unix:/dev/log;
-  error_log syslog:server=unix:/dev/log info;
+server {
+  listen       443 ssl;
+  server_name  demo.court.digital;
+  client_max_body_size 4G;
+  ssl_client_certificate client.crt;
+  ssl_verify_client      optional;
 
-  server {
-    listen       443 ssl;
-    server_name  demo.court.digital;
-    client_max_body_size 4G;
-    ssl_client_certificate client.crt;
-    ssl_verify_client      on;
-
-    location /keys { root /crypt; add_header Content-Disposition 'attachment'; }
-    location /store { root /crypt; default_type application/pdf; }
-    location /static { root /var/lib/etrial; }
-    location / {
-      proxy_pass http://127.0.0.1:8000;
-      proxy_set_header X-Ssl-Client-Fingerprint $ssl_client_fingerprint;
-      proxy_set_header X-Ssl-Client-Subject $ssl_client_s_dn;
-    }
+  #location /keys { root /crypt; add_header Content-Disposition 'attachment'; }
+  location /store {
+    if ($ssl_client_verify != SUCCESS) { return 403; break; }
+    root /home/etrial;
+    default_type application/pdf;
   }
-#}
+  location /static {
+    if ($ssl_client_verify != SUCCESS) { return 403; break; }
+    root /mnt/etrial-manager;
+  }
+
+  location /judge { proxy_pass http://localhost:5001;
+    auth_basic "Authorised users only.";
+    auth_basic_user_file dav.htpasswd; }
+
+  location /jury { proxy_pass http://localhost:5002;
+    auth_basic "Authorised users only.";
+    auth_basic_user_file dav.htpasswd; }
+
+  location /witness { proxy_pass http://localhost:5003;
+    auth_basic "Authorised users only.";
+    auth_basic_user_file dav.htpasswd; }
+
+  location / {
+    if ($ssl_client_verify != SUCCESS) { return 403; break; }
+    proxy_pass http://127.0.0.1:5000;
+    proxy_set_header X-Ssl-Client-Fingerprint $ssl_client_fingerprint;
+    proxy_set_header X-Ssl-Client-Subject $ssl_client_s_dn;
+  }
+}

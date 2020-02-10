@@ -4,5 +4,5 @@ Maintainer: Scott Young <scott@sjy.id.au>
 Description: Flask application for publishing documents over SFTP
 Homepage: https://github.com/splintax/etrial-manager
 Architecture: all
-Depends: git, nginx, pwgen, python3, python3-certbot-nginx
+Depends: git, gunicorn, jq, nginx, pwgen, python3-certbot-nginx, python3-dateutil, python3-flask, python3-toml
 

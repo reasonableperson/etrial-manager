@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Check that a username was supplied.
+if (( $# != 1 )); then
+  echo "Usage: etrial-davserver {judge,jury,witness}"
+  exit
+fi
+
+# Determine the appropriate password and port for that username.
+user=$1
+password=$(echo password)
+port=$(grep "$user" /etc/nginx/sites-enabled/default | grep -Po ':\K\d+')
+
+# Handle misconfiguration.
+if [ -z "$port" ]; then
+  echo "Coulnd't find $user in nginx config; don't know what port to listen on."
+  exit
+fi
+
+# Start davserver.
+/usr/bin/davserver -D "/home/etrial/dav" -n -P "$port"
