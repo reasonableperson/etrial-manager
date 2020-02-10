@@ -1,7 +1,7 @@
-events { worker_connections 1024; }
-http {
-  include mime.types;
-  types_hash_max_size 4096;
+#events { worker_connections 1024; }
+#http {
+  #include mime.types;
+  #types_hash_max_size 4096;
 
   # send all our logs to journald for fast processing
   access_log syslog:server=unix:/dev/log;
@@ -9,10 +9,8 @@ http {
 
   server {
     listen       443 ssl;
-    server_name  etrial.sjy.id.au;
+    server_name  demo.court.digital;
     client_max_body_size 4G;
-    ssl_certificate        https.crt;
-    ssl_certificate_key    https.key;
     ssl_client_certificate client.crt;
     ssl_verify_client      on;
 
@@ -25,4 +23,4 @@ http {
       proxy_set_header X-Ssl-Client-Subject $ssl_client_s_dn;
     }
   }
-}
+#}

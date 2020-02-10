@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Script run as part of the etrial OS installation / configuration process. It
+# generates a custom CA which is used (only) to sign HTTPS client certificates
+# and secure the web interface.
+
+# The server needs to be a custom CA so it can sign HTTPS client certificates.
+# These will be presented by users in order to access the web interface.
+# However, we only need to do this once; on subsequent reinstalls, the existing
+# certificate can be left in place.
+
+if [ ! -f /etc/nginx/client.crt ]; then
+
+  echo "Creating new CA ..."
+  openssl ecparam -genkey -name secp256r1 | openssl ec -out /etc/nginx/client.key
+
+  # The server certificate must be stored in /etc/nginx. nginx presents this when
+  # users attempt to connect. client.crt is a certificate stored on the server
+  # and used for the purpose of HTTPS client authentication.
+
+  subj="/C=AU/ST=NSW/L=Sydney/O=CDPP/CN=etrial"
+  echo "Creating new server certificate with subject $subj ..."
+  openssl req -new -x509 -days 3650 -subj $subj \
+    -key /etc/nginx/client.key -out /etc/nginx/client.crt
+
+  # Call another script for bootstrapping the next user.
+
+  echo "Creating admin.pfx certificate bundle ..."
+  /usr/share/etrial-manager/scripts/add-https-user.sh admin "Default Administrator" /root
+fi
+
+systemctl enable etrial-manager
+systemctl start etrial-manager

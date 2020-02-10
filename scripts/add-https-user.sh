@@ -1,12 +1,12 @@
 #!/bin/bash
 
-if (( $# != 5 )); then
+if (( $# != 3 )); then
   echo "Usage: add-https-user.sh <username> <user-full-name> <ca-crt> <ca-key> <working-dir>"
   exit 1
 fi
 
-cd "$5"
-echo "Creating new HTTP user in working directory $5."
+cd "$3"
+echo "Creating new HTTP user in working directory $3."
 
 # Create private key.
 openssl ecparam -genkey -name secp256r1 | openssl ec -out "$1.key"
@@ -19,7 +19,7 @@ rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 # Create certificate using CSR and <ca-key>.
 openssl x509 -req -days 365 -set_serial 0x$(openssl rand -hex 8) \
-  -in "$1.csr" -out "$1.crt" -CA "$3" -CAkey "$4"
+  -in "$1.csr" -out "$1.crt" -CA /etc/nginx/client.crt -CAkey /etc/nginx/client.key
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 # Create PKCS #12 archive.
@@ -37,4 +37,4 @@ chmod o+r "$1.pfx"
 rm "$1.csr" "$1.key" "$1.crt"
 echo "Created TLS certificate bundle $1.pfx in $(pwd)."
 echo "The certificate bundle was encrypted with the following password:"
-echo -n $export_password
+echo $export_password

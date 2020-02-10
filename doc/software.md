@@ -3,6 +3,31 @@
 You've configured a Ubuntu machine, connected it to the internet, and logged
 into it using SSH. Here's how to set up the etrial manager software on it.
 
+First, install the latest release of `etrial-manager`, which will install
+`nginx` and other dependencies:
+
+    apt install /var/lib/etrial/etrial-manager-0.2.0.deb
+
+Then, add the certbot repository (because the version of certbot packaged in
+Ubuntu LTS is too old), install `python-certbot-nginx`, and run it to enable
+HTTPS:
+
+    apt-get update
+    apt-get install software-properties-common
+    add-apt-repository ppa:certbot/certbot
+    apt-get update
+    apt-get install python-certbot-nginx
+
+    certbot -n --nginx --domains demo.court.digital \
+      --agree-tos --email <your_email>
+
+
+Install some dependencies:
+
+
+-      nginx gocryptfs gunicorn jq man openssh sshguard pwgen vim \
+-      python-dateutil python-flask python-toml
+
 Configure the container's sshd config to disable almost everything, listen on
 a custom port, and lock SFTP users into a chroot jail:
 
