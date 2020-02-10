@@ -16,6 +16,8 @@ from flask import Flask, flash, g, render_template, redirect, request
 
 # Configuration
 
+VERSION = "0.2.0"
+
 CODE_ROOT = os.path.dirname(os.path.realpath(__file__))
 DATA_ROOT = '/home/etrial'
 WEBDAV_ROOT = os.path.join(DATA_ROOT, 'dav')
@@ -361,15 +363,13 @@ def create_https_client_cert(username, real_name):
 
 # Template utilities
 
-@app.context_processor
-def t_inject_user(): return dict(user=get_current_user())
-
-@app.context_processor
-def t_inject_crypt_root(): return dict(secure_path=DATA_ROOT)
-
 def now(): return datetime.datetime.now(dateutil.tz.tzutc())
 @app.context_processor
-def t_inject_now(): return dict(now=now())
+def t_inject_user(): return {
+    'user': get_current_user(),
+    'now': now(),
+    'version': VERSION,
+}
 
 @app.template_filter('parse')
 def t_filter_parse(iso8601): return dateutil.parser.parse(iso8601)
