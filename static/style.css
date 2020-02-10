@@ -79,6 +79,7 @@ section table .matrix {
 }
 section table .matrix:hover { background: #e1d1f0 }
 #documents table .matrix:hover::after { content: 'publish?' }
+#documents table .matrix.edit:hover::after { content: none }
 #documents table .matrix.active:hover::after { content: 'recall?' }
 #settings table .matrix:hover::after { content: none }
 section table .matrix.active { background: #3a0870; color: white }

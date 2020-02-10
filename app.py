@@ -246,6 +246,14 @@ def cmd_documents_recall(_hash, user_group):
     save_metadata(metadata)
     return json.dumps(msg), 200
 
+@app.route('/documents/edit/<_hash>/title', methods=['POST'])
+def cmd_documents_edit_title(_hash):
+    pass
+
+@app.route('/documents/edit/<_hash>/title', methods=['POST'])
+def cmd_documents_edit_description(_hash):
+    pass
+
 @app.route('/documents/delete/<_hash>/', methods=['POST'])
 def cmd_documents_delete(_hash):
     metadata = load_metadata()

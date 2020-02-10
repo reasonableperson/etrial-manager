@@ -39,14 +39,14 @@
     </tr>
   </thead><tbody>
   {% for row_hash, row_data in documents %}
-    <tr data-rowId="{{ row_hash }}">
+    <tr>
       <td class="identifier">
         <code>{{row_hash|truncate(9)|safe}}</code>
         <strong>{{ row_data.identifier }}</strong>
       </td><td class="matrix edit">edit or assign</td>
       <td data-col="title">
         <a href="/store/{{ row_hash }}">{{ row_data.title }}</a>
-      </td><td class="matrix edit">edit</td>
+      </td><td class="matrix edit" data-action="edit" data-col="title" data-row="{{ row_hash }}">edit</td>
       <td class="added">
         <span class="date">{{ row_data.added | localise | long_date }}</span><br>
         <span class="time">{{ row_data.added | localise | long_time }}</span>
