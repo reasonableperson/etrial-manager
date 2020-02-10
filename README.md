@@ -1,39 +1,87 @@
 # etrial-manager
 
-This repository contains a Flask application and a series of configuration
-files and shell scripts for configuring a companion nginx instance to proxy the
-application for authorised administrators, and an OpenSSH daemon which provides
-audited access to file shares configured using the Flask application over SFTP.
+This repository supports a courtroom evidence presentation system consisting of:
 
-Collectively, these files constitute an open source framework for presenting
-information in the context of an electronic criminal trial. The framework has
-been designed to meet the transparency and security requirements of real
-court proceedings. The system can be deployed either in a container on an
-internet-connected host server running Arch Linux, or on a Raspberry Pi
-connected to a local wireless network in the courtroom itself.
+* the **etrial manager**, a Flask application that can be used to upload files
+  using a web browser and mark them for publication, which can run on a laptop
+  or container running Ubuntu, and
 
-# Design
+* **WebDAV users** using software like [PDF Expert][pdf-expert] on a tablet
+  computer such as an iPad, and
 
-This software is designed to run in two modes:
+[pdf-expert]: https://pdfexpert.com/
 
-* **Internet mode**, in which the application runs on a VM or container running
-  Ubuntu Linux, which has ports 80 and 443 exposed to the internet. Because the
-  same IP address may be reused to support multiple cases in internet mode,
-  multiple instances of the Flask application may be run behind a single nginx
-  instance. This option is easier to deploy, but requires a reliable internet
-  connection and offers less physical security.
+* a network allowing the two to communicate -- either a local wireless network,
+  or the Internet.
 
-* **Standalone mode**, in which the application runs on a laptop running Ubuntu
-  Linux, which also acts as a DHCP server, DNS server and (optionally) Internet
-  router using an attached USB LTE modem. Nearby users connect to a wireless
-  network broadcast by an attached UniFi AC PRO.
+# Server setup
 
-# Security
+## Laptop connected to wireless access point
 
-An earlier version of this software featured encryption support. This was
-implemented in order to support deployment on a Raspberry Pi (which would need
-to boot into an unencrypted OS without exposing encrypted user data). This added
-significant complexity.
+Download the [latest LTS release of Ubuntu][ubuntu-dl] (this guide was written
+for Ubuntu 18.04.3) and write the ISO to a USB flash drive.
 
-The same outcome can be achieved by using a laptop with full disk encryption,
-instead of a Raspberry Pi, as the server.
+[ubuntu-dl]: https://ubuntu.com/download/desktop
+
+Boot the laptop and follow the prompts in the graphical installer. Be sure to
+set up full-disk encryption so that data is protected against theft. When you
+have access to a terminal, skip forward to the software section.
+
+## Container connected to the Internet
+
+It is assumed that you are already running a DHCP server which can configure
+the container's network interface based on a known MAC address
+(`4a:f0:e5:e2:be:ef`) and expose ports 80 and 443 to the internet.
+
+[1]: https://wiki.archlinux.org/index.php/Systemd-nspawn#Create_a_Debian_or_Ubuntu_environment
+
+Create a new Ubuntu container called `etrial`:
+
+    cd /var/lib/machines
+    mkdir etrial
+    debootstrap --components=main,universe bionic etrial http://au.archive.ubuntu.com/ubuntu/
+
+Set the container's hostname:
+
+    echo etrial > /var/lib/machines/etrial/etc/hostname
+
+Set the container's network interface's MAC address to `4a:f0:e5:e2:be:ef` and
+configure the interface with DHCP:
+
+    echo '[Match]
+    Name=mv-eno1
+    [Link]
+    MACAddress=4a:f0:e5:e2:be:ef
+    [Network]
+    DHCP=ipv4' > /var/lib/machines/etrial/etc/systemd/network
+    ln -s /usr/lib/systemd/system/systemd-networkd.service \
+      /var/lib/machines/etrial/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+
+Make sure the container actually has a MACVLAN network interface, and give it
+access to this repository for convenience:az
+
+    echo ' [Service]
+    ExecStart=
+    ExecStart=/usr/bin/systemd-nspawn --keep-unit --boot --machine=etrial \
+        --bind-ro=/home/scott/git/etrial:/var/lib/etrial --network-macvlan=eno1
+    ' > /etc/systemd/system/systemd-nspawn@etrial.service.d/macvlan.conf
+
+Enable the container so it starts on boot:
+
+    systemctl enable systemd-nspawn@etrial
+    systemctl start systemd-nspawn@etrial
+
+Open a shell:
+
+    machinectl shell root@etrial
+
+## Software
+
+You've configured a Ubuntu machine, connected it to the internet, and logged
+into it using SSH. Here's how to set up the etrial manager software on it.
+
+    apt install /var/lib/etrial/etrial-manager-0.2.0.deb
+
+You should have a file in the current directory called `default.pfx` which can
+be imported into your browser to access the web interface which is now running
+on the IP address assigned to your container.
