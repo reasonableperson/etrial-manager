@@ -7,7 +7,7 @@ fi
 
 if [[ "$1" == "-r" ]]; then $extra_flag="-r"; fi
 
-journalctl $extra_flag -u nginx -u gunicorn -u sshd -u internal-sftp -o json \
+journalctl $extra_flag -u nginx -u etrial-manager -o json \
   -n 500 --output-fields=UNIT,MESSAGE,SYSLOG_IDENTIFIER | jq -c '
 
     # These functions attempt to get something useful out of a string, and fail
@@ -28,6 +28,14 @@ journalctl $extra_flag -u nginx -u gunicorn -u sshd -u internal-sftp -o json \
     def filter_static_files: . |
       select(.msg | test("GET /favicon.ico") | not) |
       select(.msg | test("GET /static/ui.js") | not) |
+      select(.msg | test("GET /static/style.css") | not) |
+      select(.msg | test("buffered to a temporary file") | not) |
+      select(.msg | test("closed keepalive connection") | not) |
+      select(.msg | test("client closed connection while waiting for request") | not) |
+      select(.msg | test("127.0.0.1 - -") | not) |
+      select(.msg | test("GET /static/style.css") | not) |
+      select(.msg | test("__debugger__") | not) |
+      select(.msg | test("INFO:werkzeug") | not) |
       select(.msg | test("GET /static/style.css") | not) ;
 
     # https://github.com/benoitc/gunicorn/issues/2091
