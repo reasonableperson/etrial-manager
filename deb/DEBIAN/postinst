@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# Script run as part of the etrial OS installation / configuration process. It
-# generates a custom CA which is used (only) to sign HTTPS client certificates
-# and secure the web interface.
-
-# The server needs to be a custom CA so it can sign HTTPS client certificates.
-# These will be presented by users in order to access the web interface.
-# However, we only need to do this once; on subsequent reinstalls, the existing
-# certificate can be left in place.
+# Debian post-install script for the etrial-manager package. This needs to be
+# rewritten so that the custom CA is handled separately. The need to handle
+# multiple instances on a single IPv4 address, and obtain multiple certificates
+# from Let's Encrypt, changes the design a bit.
 
 if [ ! -f /etc/nginx/client.crt ]; then
 
@@ -27,19 +23,11 @@ if [ ! -f /etc/nginx/client.crt ]; then
   /usr/share/etrial-manager/scripts/add-https-user.sh admin "Default Administrator" /root
 fi
 
-# Add the Certbot repository if necessary; the version in Ubuntu LTS is too old.
-if [ ! -f /usr/bin/certbot ]; then
-  apt-get update
-  apt-get install software-properties-common
-  add-apt-repository ppa:certbot/certbot
-  apt-get update
-  apt-get install python-certbot-nginx
-fi
-# TODO: remove personal details
-certbot -n --nginx --domains demo.court.digital --agree-tos --email scott@sjy.id.au
+# Create app user.
+adduser etrial --disabled-password --gecos ''
+chown etrial:etrial /home/etrial
 
 # Configure WebDAV for each user class.
-adduser etrial --disabled-password --gecos ''
 for user in judge jury witness; do
   mkdir -p /home/etrial/dav/$user
   chown etrial:etrial /home/etrial/dav/$user

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Note of the commands required to build a Debian package.
-
 package=etrial-manager
 version=$(grep -Po 'VERSION = "\K[^"]*' app.py)
 

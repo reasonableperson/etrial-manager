@@ -3,26 +3,20 @@ access_log syslog:server=unix:/dev/log;
 error_log syslog:server=unix:/dev/log info;
 
 server {
-  listen       443 ssl;
-  server_name  demo.court.digital;
+  listen       80;
   client_max_body_size 4G;
-  ssl_client_certificate client.crt;
-  ssl_verify_client      optional;
 
   location /keys {
-    if ($ssl_client_verify != SUCCESS) { return 403; break; }
     root /home/etrial;
     add_header Content-Disposition 'attachment';
   }
 
   location /store {
-    if ($ssl_client_verify != SUCCESS) { return 403; break; }
     root /home/etrial;
     default_type application/pdf;
   }
   location /static {
-    if ($ssl_client_verify != SUCCESS) { return 403; break; }
-    root /mnt/etrial-manager;
+    root /usr/share/etrial-manager;
   }
 
   location /judge { proxy_pass http://127.0.0.1:5001;
@@ -38,9 +32,6 @@ server {
     auth_basic_user_file dav.htpasswd; }
 
   location / {
-    if ($ssl_client_verify != SUCCESS) { return 403; break; }
     proxy_pass http://127.0.0.1:5000;
-    proxy_set_header X-Ssl-Client-Fingerprint $ssl_client_fingerprint;
-    proxy_set_header X-Ssl-Client-Subject $ssl_client_s_dn;
   }
 }
